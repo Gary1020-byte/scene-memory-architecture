@@ -27,7 +27,8 @@ const RULE_KEY_ALIAS = {
   memoryFile: '記憶檔名',
   identityFile: '身份卡檔名',
   portraitFile: '場景畫像檔名',
-  fileIndexFile: '_檔案索引檔名',
+  fileIndexFile: '檔案索引檔名',
+  '_檔案索引檔名': '檔案索引檔名',
   projectDir: '專案記憶目錄',
   archiveDir: '歸檔目錄',
   indexFile: '身份索引檔名',
@@ -51,6 +52,12 @@ const RULE_KEY_ALIAS = {
   下一棒小節: '下一棒小節',
   可累積物最小條數: '可累積物最小條數',
   累積落點小節: '累積落點小節',
+  /* 派單欄位名（引擎端可覆寫成自己的用語） */
+  派單欄位_做什麼: '派單欄位_做什麼',
+  派單欄位_判據: '派單欄位_判據',
+  派單欄位_落盤位置: '派單欄位_落盤位置',
+  派單欄位_回執方式: '派單欄位_回執方式',
+  派單欄位_需要: '派單欄位_需要',
 }
 
 export const DEFAULT_RULES = {
@@ -72,7 +79,7 @@ export const DEFAULT_RULES = {
   memoryFile: '場景私有記憶.md',
   identityFile: '身份卡.md',
   portraitFile: '場景畫像.md',
-  fileIndexFile: '_檔案索引.md',
+  fileIndexFile: '檔案索引.md',
   projectDir: '專案記憶',
   archiveDir: '歸檔',
   indexFile: '_場景身份索引.md',
@@ -95,6 +102,11 @@ export const DEFAULT_RULES = {
   下一棒小節: '下一棒',
   可累積物最小條數: 1,
   累積落點小節: '§五',
+  派單欄位_做什麼: '做什麼',
+  派單欄位_判據: '判據',
+  派單欄位_落盤位置: '落盤位置',
+  派單欄位_回執方式: '回執方式',
+  派單欄位_需要: '需要',
 }
 
 export function normalizeRules (raw) {
@@ -103,15 +115,28 @@ export function normalizeRules (raw) {
     if (out[en] === undefined && raw[zh] !== undefined) out[en] = raw[zh]
     if (out[zh] === undefined && raw[en] !== undefined) out[zh] = raw[en]
   }
+  // ★ 有些規則的中文鍵本身就是英文鍵（如「_檔案索引檔名」），
+  //   別名對照表要兩邊都登，否則會讀成 undefined。
+  for (const zh of Object.values(RULE_KEY_ALIAS)) {
+    if (out[zh] === undefined && raw[zh] !== undefined) out[zh] = raw[zh]
+  }
   return out
 }
 
-export function loadRules (root) {
+/**
+ * 載入規則。優先序：
+ *   ① 明確指定的規則檔（--規則 <路徑>）—— ★ 引擎端用這個帶自己的命名
+ *   ② <工作台根>/交接規則.json
+ *   ③ 工具同目錄的交接規則.json（repo 預設）
+ *   ④ 04-模板/交接規則.json
+ */
+export function loadRules (root, explicit) {
   const candidates = [
-    path.join(HERE, '交接規則.json'),
+    explicit,
     path.join(root || '', '交接規則.json'),
+    path.join(HERE, '交接規則.json'),
     path.join(HERE, '..', '04-模板', '交接規則.json'),
-  ]
+  ].filter(Boolean)
   for (const p of candidates) {
     try {
       if (!fs.existsSync(p)) continue
@@ -126,10 +151,16 @@ export function loadRules (root) {
 
 /* ───────────────────────── 路徑解析 ───────────────────────── */
 
-export function resolveMemoryRoot (root) {
+/**
+ * 記憶根解析。候選鏈可被規則檔覆寫（引擎端用自己的目錄名與字體）。
+ * 佔位符 <根> 會被替換成工作台根。
+ */
+export function resolveMemoryRoot (root, rules) {
   const cands = [
     process.env.DSH_SCENE_MEMORY,
+    ...((rules && rules.記憶根候選) || []).map(p => String(p).replace('<根>', root)),
     path.join(root, '場景'),
+    path.join(root, '場景記憶'),
     path.join(root, '引擎數據', '.dsh', '場景記憶'),
   ].filter(Boolean)
   for (const p of cands) {
@@ -138,10 +169,13 @@ export function resolveMemoryRoot (root) {
   return cands[1] || path.join(root, '場景')
 }
 
-export function resolveIndexPath (root) {
+export function resolveIndexPath (root, rules) {
+  const idxName = (rules && rules.身份索引檔名) || '_場景身份索引.md'
+  const sceneDir = (rules && rules.場景根目錄) || '場景'
   const cands = [
-    path.join(root, '場景', '_場景身份索引.md'),
-    path.join(root, '外壳', 'scenarios', '_場景身份索引.md'),
+    path.join(root, sceneDir, idxName),
+    path.join(root, '外壳', 'scenarios', idxName),
+    path.join(root, '外壳', 'scenarios', '_场景身份索引.md'),
   ]
   return cands.find((p) => fs.existsSync(p)) || cands[0]
 }

@@ -202,6 +202,45 @@ wf_expect "正常工作流通過（exit=0）" 0 "✓ 全部通過" 'id: 好的
 rm -rf "$WFWORK"
 
 echo
+echo "═══ 新增場景工具（V15–V17）═══"
+
+NSTMP="$(mktemp -d)"
+mkdir -p "$NSTMP/場景"
+cat > "$NSTMP/場景/_場景身份索引.md" <<'EOF'
+# 場景身份索引
+
+| 場景 id | 面板 id | 面板標題 | 會話名 | 會話 id | 定位卡 | 主技能 |
+|---|---|---|---|---|---|---|
+EOF
+
+ns_expect() {  # ns_expect <描述> <預期 exit> <關鍵字> <指令...>
+  local desc="$1" want="$2" kw="$3"; shift 3
+  local out rc
+  out="$("$@" 2>&1)"; rc=$?
+  if [ "$rc" = "$want" ] && echo "$out" | grep -q -- "$kw"; then
+    echo "  ✓ $desc"; pass=$((pass+1))
+  else
+    echo "  ✗ $desc"; echo "     期望 exit=$want 含「$kw」，實際 exit=$rc"
+    echo "$out" | sed 's/^/     /' | head -6
+    fail=$((fail+1))
+  fi
+}
+
+ns_expect "新增場景成功建立骨架" 0 "git init（場景邊界）" \
+  node "$HERE/新增場景.mjs" --root "$NSTMP" --id t1 --名 測試場景一 --職責 "a;b;c"
+
+ns_expect "新建的場景六件套齊全" 0 "✓ 全部通過" \
+  bash -c "node '$HERE/場景記憶.mjs' stamp --場景 測試場景一 --root '$NSTMP' >/dev/null 2>&1; node '$HERE/場景記憶.mjs' check --場景 測試場景一 --root '$NSTMP'"
+
+ns_expect "重複跑不會覆寫既有檔案" 0 "已存在，未覆寫" \
+  node "$HERE/新增場景.mjs" --root "$NSTMP" --id t1 --名 測試場景一 --職責 "a;b;c"
+
+ns_expect "缺 --id 或 --名 時報用法錯誤" 2 "需要 --id 與 --名" \
+  node "$HERE/新增場景.mjs" --root "$NSTMP"
+
+rm -rf "$NSTMP"
+
+echo
 echo "═══ 結果：$pass 通過，$fail 失敗 ═══"
 rm -rf "$WORK"; cp -r "$ROOT/04-模板/示範工作台.乾淨" "$WORK"
 [ "$fail" = 0 ] && exit 0 || exit 1

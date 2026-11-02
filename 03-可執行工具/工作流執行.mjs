@@ -140,6 +140,28 @@ function listRuns () {
     .map(e => e.name)
 }
 
+/* ───────────────────────── 派單自檢 ───────────────────────── */
+
+/**
+ * 產生派單後立刻檢查：缺判據的派單送出去會靜默失效。
+ * 這是「送出之前」的最後一道閘，比「收到之後才發現不對」便宜得多。
+ */
+function checkDispatch (p) {
+  try {
+    execFileSync(process.execPath, [
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '派單校驗.mjs'),
+      '--root', root, '--派單', p,
+    ], { stdio: 'pipe' })
+    return { ok: true, problems: [] }
+  } catch (e) {
+    const out = (e.stdout ? e.stdout.toString() : '') + (e.stderr ? e.stderr.toString() : '')
+    const problems = out.split('\n')
+      .filter(l => l.trim().startsWith('· '))
+      .map(l => l.trim().slice(2))
+    return { ok: false, problems: problems.length ? problems : ['派單校驗失敗（exit ' + (e.status || '?') + '）'] }
+  }
+}
+
 /* ───────────────────────── start ───────────────────────── */
 
 function cmdStart () {
@@ -252,6 +274,14 @@ ${step['需確認'] === true || step['需確認'] === 'true' ? '\n⚠ 本步是�
 `
   const dispatchPath = path.join(runDir, rules.回執目錄, `派單-${stepNo}.md`)
   writeText(dispatchPath, dispatch)
+
+  // ★ 產生派單後立刻自檢（送出之前的最後一道閘）
+  const dispatchCheck = checkDispatch(dispatchPath)
+  if (!dispatchCheck.ok) {
+    console.log('\n✗ 產生的派單不合格：')
+    for (const p2 of dispatchCheck.problems) console.log('  · ' + p2)
+    console.log('  （派單已寫入 ' + dispatchPath + '，但不要送出去）')
+  }
 
   const st = state.步驤.find(s => s.序號 === stepNo)
   if (st) st.狀態 = '執行中'
