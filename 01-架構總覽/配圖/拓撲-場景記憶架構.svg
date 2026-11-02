@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1075" viewBox="0 0 1280 1075">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1155" viewBox="0 0 1280 1155">
 <defs>
     <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
       <path d="M24 0H0V24" fill="none" stroke="#eef2f7" stroke-width="1"/>
@@ -27,19 +27,20 @@
       .sep { stroke: #e2e8f0; stroke-width: 1; }
     </style>
   </defs>
-<rect width="1280" height="1075" fill="#f8fafc"/>
-<rect width="1280" height="1075" fill="url(#grid)"/>
+<rect width="1280" height="1155" fill="#f8fafc"/>
+<rect width="1280" height="1155" fill="url(#grid)"/>
 <text x="48" y="58" font-size="34" class="t">場景記憶架構 · 拓撲總覽</text>
 <text x="48" y="88" font-size="16" class="b">節點 = 東西放在哪一層；連線 = 誰讀誰、誰寫誰</text>
-<text x="1224" y="88" font-size="15" fill="#94a3b8" text-anchor="end">※ 層號 = 歸屬層級（見總綱「六層」表）｜主資料流 L0 → L2 → L1 → L3 ↓（C6 回執例外）</text>
+<text x="1224" y="88" font-size="15" fill="#94a3b8" text-anchor="end">※ 層號 = 歸屬層級（見總綱「七層」表）｜主資料流 L0 → L2 → L1 → L3 ↓（C6 回執例外）</text>
 
 <!-- L0 全域憲法 -->
-<rect x="440" y="115" width="400" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
-<rect x="440" y="115" width="6" height="74" rx="3" fill="#2563eb"/>
-<text x="464" y="149" font-size="21" class="t">L0 全域憲法</text>
-<text x="464" y="175" font-size="16" class="b">記憶在檔案裡 · 場景主權 · 一次派單＝一條回執</text>
-<path d="M640 189 V225" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arB)"/>
-<text x="654" y="213" font-size="15" class="cap" fill="#2563eb">C1 注入（每輪）</text>
+<rect x="440" y="105" width="400" height="92" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="105" width="6" height="92" rx="3" fill="#2563eb"/>
+<text x="464" y="139" font-size="21" class="t">L0 全域憲法</text>
+<text x="464" y="165" font-size="16" class="b">記憶在檔案裡 · 場景主權 · 一次派單＝一條回執</text>
+<text x="464" y="186" font-size="14" fill="#b45309" font-weight="600">· 沒有可累積物的回執＝這次活白做</text>
+<path d="M640 197 V225" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arB)"/>
+<text x="654" y="218" font-size="15" class="cap" fill="#2563eb">C1 注入（每輪）</text>
 
 <!-- L2 場景私有層 -->
 <rect x="440" y="225" width="400" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
@@ -110,7 +111,7 @@
 <rect x="440" y="500" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="440" y="500" width="6" height="100" rx="3" fill="#059669"/>
 <text x="464" y="530" font-size="21" class="t">L1 共享層</text>
-<text x="464" y="556" font-size="16" class="b">身分索引 · 跨場景看板 · 待辦 · 衝突簿 · 路由表</text>
+<text x="464" y="556" font-size="16" class="b">身分索引 · 跨場景看板 · 待辦 · 衝突簿 · 工作流（★ 計畫）</text>
 <text x="464" y="582" font-size="15" fill="#059669" font-weight="600">唯一合法的跨場景通道</text>
 
 <!-- 左下：單一真源 -->
@@ -143,7 +144,7 @@
 <path d="M470 600 V640" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arS)"/>
 <text x="484" y="626" font-size="14" class="cap" fill="#0284c7">C5 派單（RPC／留言）</text>
 <path d="M810 640 V606" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arP)"/>
-<text x="796" y="626" font-size="14" class="cap" fill="#7c3aed" text-anchor="end">C6 回執（差異集合）</text>
+<text x="796" y="626" font-size="14" class="cap" fill="#7c3aed" text-anchor="end">C6 回執（三件套）</text>
 
 <!-- L3 工具層 -->
 <rect x="440" y="640" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
@@ -152,19 +153,28 @@
 <text x="464" y="696" font-size="16" class="b">校驗 check / stamp / 交接 · 建會話 · 發訊息 · 派單</text>
 <text x="464" y="722" font-size="15" fill="#0284c7" font-weight="600">★ 工具放在資料之外 —— 升級不破壞資料</text>
 
+<!-- L2′ 執行層（主控端私有） -->
+<path d="M640 740 V768" stroke="#b45309" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arA)"/>
+<text x="654" y="762" font-size="14" class="cap" fill="#b45309">C9 執行狀態私有</text>
+<rect x="440" y="768" width="400" height="80" rx="14" fill="#fffdf5" stroke="#fcd34d" filter="url(#sh)"/>
+<rect x="440" y="768" width="6" height="80" rx="3" fill="#b45309"/>
+<text x="464" y="798" font-size="21" class="t">L2′ 執行層（主控端私有）</text>
+<text x="464" y="822" font-size="15" class="b">執行/&lt;run-id&gt;/：執行狀態（跑到哪）· 交接串（可累積物往下傳）</text>
+<text x="464" y="841" font-size="13" fill="#b45309" font-weight="600">★ 計畫在 L1（共享），狀態在這裡（私有）</text>
+
 <!-- C7 / C8 -->
-<path d="M640 740 V775" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
-<text x="654" y="763" font-size="15" class="cap" fill="#64748b">C7 寫入 · C8 稽核（git log）</text>
+<path d="M640 848 V878" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="654" y="868" font-size="15" class="cap" fill="#64748b">C10 稽核（git log）</text>
 
 <!-- L4 / L5 -->
-<rect x="440" y="775" width="400" height="80" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
-<rect x="440" y="775" width="6" height="80" rx="3" fill="#64748b"/>
-<text x="464" y="805" font-size="21" class="t">L4 稽核層 · L5 歸檔層</text>
-<text x="464" y="833" font-size="16" class="b">git log 全在 · 交接前快照 · 只進不改，可恢復</text>
+<rect x="440" y="878" width="400" height="80" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="878" width="6" height="80" rx="3" fill="#64748b"/>
+<text x="464" y="908" font-size="21" class="t">L4 稽核層 · L5 歸檔層</text>
+<text x="464" y="936" font-size="16" class="b">git log 全在 · 交接前快照 · 只進不改，可恢復</text>
 
 <!-- 底部總結 -->
-<rect x="56" y="895" width="1168" height="140" rx="14" fill="#0f172a" filter="url(#sh)"/>
-<text x="640" y="943" font-size="24" fill="#ffffff" font-weight="700" text-anchor="middle">路由靠目錄，送達靠 RPC，留痕靠檔案，驗證靠 fail-closed</text>
-<text x="640" y="985" font-size="18" fill="#cbd5e1" text-anchor="middle">記憶在檔案裡，不在會話裡 —— 所以會話可以無限換，場景不會失憶</text>
-<text x="640" y="1017" font-size="15" fill="#94a3b8" text-anchor="middle">場景記憶＝帳本（回答「現在」）　·　語意記憶＝wiki（回答「以前」）　·　兩者分工要死</text>
+<rect x="56" y="985" width="1168" height="140" rx="14" fill="#0f172a" filter="url(#sh)"/>
+<text x="640" y="1033" font-size="24" fill="#ffffff" font-weight="700" text-anchor="middle">累積要有載體，載體要能改寫；派單要帶回累積物，回執要能被驗收</text>
+<text x="640" y="1075" font-size="18" fill="#cbd5e1" text-anchor="middle">能力不在模型裡，在累積裡 —— 聰明是模型給的，本事是自己養的</text>
+<text x="640" y="1107" font-size="15" fill="#94a3b8" text-anchor="middle">記憶在檔案裡，不在會話裡 —— 這是累積能發生的前提</text>
 </svg>

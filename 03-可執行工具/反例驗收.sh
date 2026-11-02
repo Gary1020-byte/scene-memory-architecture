@@ -142,6 +142,66 @@ else
 fi
 
 echo
+echo "═══ 工作流校驗（V12–V14）═══"
+
+WFTOOL="$HERE/工作流校驗.mjs"
+WFWORK="$(mktemp -d)"
+mkdir -p "$WFWORK/工作流"
+
+wf_expect() {  # wf_expect <描述> <預期 exit> <關鍵字> <yaml 內容>
+  local desc="$1" want="$2" kw="$3" content="$4" out rc
+  printf '%s\n' "$content" > "$WFWORK/工作流/測試.yaml"
+  out="$(node "$WFTOOL" --root "$WFWORK" 2>&1)"; rc=$?
+  if [ "$rc" = "$want" ] && echo "$out" | grep -q -- "$kw"; then
+    echo "  ✓ $desc"; pass=$((pass+1))
+  else
+    echo "  ✗ $desc"; echo "     期望 exit=$want 含「$kw」，實際 exit=$rc"
+    echo "$out" | sed 's/^/     /' | head -6
+    fail=$((fail+1))
+  fi
+}
+
+wf_expect "工作流缺少必要欄位被擋" 1 "缺必要欄位" 'id: 壞
+名稱: 壞掉的工作流'
+
+wf_expect "步驟缺「場景」被擋" 1 "缺「場景」" 'id: 壞
+名稱: 壞掉的工作流
+版本: 1
+步驟:
+  - 目的: 這步沒有場景
+    判據: 這步的判準夠長可以通過長度檢查'
+
+wf_expect "「需確認」值域不合法被擋" 1 "只能是 true / false" 'id: 壞
+名稱: 壞掉的工作流
+版本: 1
+步驟:
+  - 場景: 場景丙
+    目的: 清理
+    判據: 實際釋放 1 GB 並列出刪了什麼
+    需確認: maybe'
+
+wf_expect "「失敗策略」不合法被擋" 1 "「失敗策略」只能是" 'id: 壞
+名稱: 壞掉的工作流
+版本: 1
+步驟:
+  - 場景: 場景丙
+    目的: 清理
+    判據: 實際釋放 1 GB 並列出刪了什麼
+失敗策略: 隨便'
+
+wf_expect "正常工作流通過（exit=0）" 0 "✓ 全部通過" 'id: 好的
+名稱: 好的工作流
+版本: 1
+步驟:
+  - 場景: 場景丙
+    目的: 清理
+    判據: 實際釋放 1 GB 並列出刪了什麼
+    需確認: true
+失敗策略: 停在原地等人'
+
+rm -rf "$WFWORK"
+
+echo
 echo "═══ 結果：$pass 通過，$fail 失敗 ═══"
 rm -rf "$WORK"; cp -r "$ROOT/04-模板/示範工作台.乾淨" "$WORK"
 [ "$fail" = 0 ] && exit 0 || exit 1
