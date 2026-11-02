@@ -15,9 +15,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const HERE = path.dirname(fileURLToPath(import.meta.url))
+import { loadRules, parseYaml, findWorkflowFiles } from './工作台.mjs'
 
 /* ───────────────────────── 規則單一來源 ───────────────────────── */
 
@@ -27,107 +25,6 @@ const RULES = {
   可選欄位: ['落盤', '需要', '需確認'],
   失敗策略合法值: ['停在原地等人', '繼續', '回滾'],
   需確認合法值: [true, false, 'true', 'false'],
-  執行層目錄: '執行',
-  工作流目錄: '工作流',
-}
-
-/* ───────────────────────── 受限 YAML 解析 ───────────────────────── */
-
-/**
- * 只支援本專案需要的子集：
- *   key: value
- *   key:
- *   - item
- *   - key: value
- *     key2: value
- * 出現任何無法判定的行就丟錯 —— 寧可報「看不懂」，也不要默默猜錯。
- */
-function parseYaml (text) {
-  const lines = text.split('\n')
-  const root = {}
-
-  // 以「縮排深度」追蹤目前在寫哪個容器：
-  //   root            → 頂層物件
-  //   listCtx         → 某個 key 底下的清單（listCtx.key 是清單名）
-  //   itemCtx         → 清單裡的某個項目物件
-  let listCtx = null    // { key, arr, indent }
-  let itemCtx = null    // { obj, indent }
-
-  const resetToRoot = () => { listCtx = null; itemCtx = null }
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]
-    if (!raw.trim() || raw.trim().startsWith('#')) continue
-    if (raw.includes('\t')) {
-      throw new Error(`第 ${i + 1} 行含 tab（本工具只用空格縮排）：${raw.trim()}`)
-    }
-    const cur = raw.match(/^(\s*)/)[0].length
-    const body = raw.trim()
-
-    // ── 清單項目：- key: value / - 純量 ──
-    if (body.startsWith('- ')) {
-      if (!listCtx) throw new Error(`第 ${i + 1} 行是清單項目，但沒有對應的 key：${body}`)
-      const val = body.slice(2).trim()
-      const obj = {}
-      listCtx.arr.push(obj)
-      itemCtx = { obj, indent: cur }
-      const m = val.match(/^([^:]+):(.*)$/)
-      if (m) obj[m[1].trim()] = parseScalar(m[2].trim())
-      else obj.__value = parseScalar(val)
-      continue
-    }
-
-    const m = body.match(/^([^:]+):(.*)$/)
-    if (!m) throw new Error(`第 ${i + 1} 行看不懂：${body}`)
-    const key = m[1].trim()
-    const val = m[2].trim()
-
-    // ── 巢狀於清單項目裡的 key（縮排比項目深）──
-    if (itemCtx && cur > itemCtx.indent) {
-      itemCtx.obj[key] = val === '' ? '' : parseScalar(val)
-      continue
-    }
-
-    // ── 回到頂層或新的 key ──
-    if (itemCtx && cur <= itemCtx.indent) {
-      // 離開項目，但可能仍在清單裡（下一行是 - ）→ 由後續行決定
-      itemCtx = null
-    }
-
-    if (val === '') {
-      const next = nextMeaningful(lines, i + 1)
-      if (next && next.trim().startsWith('- ')) {
-        const arr = []
-        root[key] = arr
-        listCtx = { key, arr, indent: cur }
-        itemCtx = null
-        continue
-      }
-      root[key] = ''
-      resetToRoot()
-      continue
-    }
-
-    root[key] = parseScalar(val)
-    listCtx = null
-    itemCtx = null
-  }
-  return root
-}
-
-function nextMeaningful (lines, from) {
-  for (let i = from; i < lines.length; i++) {
-    const t = lines[i].trim()
-    if (t && !t.startsWith('#')) return t
-  }
-  return null
-}
-
-function parseScalar (v) {
-  if (v === 'true') return true
-  if (v === 'false') return false
-  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v)
-  return v.replace(/^["']|["']$/g, '')
 }
 
 /* ───────────────────────── 檢查 ───────────────────────── */
@@ -203,22 +100,6 @@ function checkWorkflow (doc, fileName) {
 }
 
 /* ───────────────────────── 主流程 ───────────────────────── */
-
-function findWorkflowFiles (root) {
-  const out = []
-  const candidates = [
-    path.join(root, RULES.工作流目錄),
-    path.join(root, '場景', '_共享記憶', RULES.工作流目錄),
-    path.join(root, '共享', RULES.工作流目錄),
-  ]
-  for (const d of candidates) {
-    if (!fs.existsSync(d)) continue
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      if (e.isFile() && /\.ya?ml$/.test(e.name)) out.push(path.join(d, e.name))
-    }
-  }
-  return out
-}
 
 function report (res) {
   console.log('\n' + res.fileName)
