@@ -1,0 +1,22 @@
+{
+  "_說明": "★ 引擎端場景配置（面板 json）的 repo 對應物。引擎端用 <根>/scenarios/<場景id>.json；這份放在場景目錄裡，讓 repo 的工具能讀到 sessionId 做「換會話三處同步」驗收。",
+  "id": "demo",
+  "name": "示範場景",
+  "description": "示範：一個標準場景長什麼樣。",
+  "layout": "grid",
+  "theme": "dark",
+  "panels": [
+    {
+      "id": "demo-ai",
+      "title": "AI·示範場景",
+      "type": "harness",
+      "sessionTitle": "示範場景",
+      "sessionId": "session-demo0001",
+      "col": 1,
+      "row": 1,
+      "w": 1,
+      "h": 5
+    }
+  ],
+  "first": false
+}
