@@ -85,8 +85,17 @@ function readState (runDir) {
       const k = m[1].trim()
       const v = m[2].trim()
       if (k === '目前步驟') state.目前步驤 = Number(v)
+      // ★ 保險：欄位名兩種寫法都吃（目前步驟／目前步驤），
+      //   寫與讀的用字只要差一個字，狀態就會靜默變成 undefined。
+      if (k === '目前步驤') state.目前步驤 = Number(v)
       if (k === '狀態') state.狀態 = v
       if (k === '工作流') state.工作流 = v
+      // ★ run id / 啟動時間也要讀回來。
+      //   少了這兩行，第二次讀狀態檔時 state.runId 會變 undefined，
+      //   派單 id 就會變成「派單-undefined-步N-xxxx」——派單 id 毀了，
+      //   回執認領校驗也就形同虛設。
+      if (k === 'run id') state.runId = v
+      if (k === '啟動時間') state.啟動時間 = v
       continue
     }
     if (line.startsWith('|')) {
@@ -244,6 +253,26 @@ function cmdStep () {
   const step = steps[idx]
   const stepNo = idx + 1
 
+  const r = produceStep(runDir, state, wfDoc, steps, step, stepNo)
+  console.log('\n▶ 步驟' + stepNo + '/' + steps.length + ' 派單已產生')
+  console.log('  場景：' + step['場景'])
+  console.log('  派單檔：' + r.dispatchPath)
+  console.log('  派單 id：' + r.dispatchId)
+  if (r.carried) console.log('  已帶入上一跳的可累積物（' + r.carried.split('\n').length + ' 行）')
+  if (step['需確認'] === true || step['需確認'] === 'true') console.log('  ⚠ 本步是門檻，收完回執會停下等人')
+  console.log('\n派單內容：\n' + r.dispatch)
+}
+
+/**
+ * ★ 產生某一步的派單檔（step 與 run 共用同一份邏輯）。
+ *
+ * 為什麼要抽出來：`step` 是手動跑一格，`run` 是迴圈跑一格。
+ *   兩邊若各寫一份 producing logic，就會出現「手動跑跟自動跑產出的派單長得不一样」
+ *   ——然後自動推進會在某些步驟失敗而你查不出原因。
+ *
+ * @returns {{dispatchPath:string, dispatch:string, dispatchId:string, carried:string}}
+ */
+function produceStep (runDir, state, wfDoc, steps, step, stepNo) {
   // 上一跳的可累積物（從交接串取）
   let carried = ''
   const carryFile = path.join(runDir, rules.交接串檔名)
@@ -254,10 +283,19 @@ function cmdStep () {
     if (m) carried = m[1].trim()
   }
 
-  // 產生派單檔
+  // ★ 派單 id：這一跳的唯一識別。
+  //   回執必須自報這個 id，否則無法確認「這份回覆是回給這張派單的」。
+  //   沒有它，兩條工作流併發送同一場景時會互相認領錯回執而且沒有任何錯誤訊號。
+  const dispatchId = '派單-' + state.runId + '-步' + stepNo + '-' +
+    Math.random().toString(36).slice(2, 6)
+
   const dispatch = `# 派單 · ${wfDoc['名稱'] || '工作流'} · 步驟${stepNo}/${steps.length}
 
 【${step['場景']} · 派單 · 請回執】
+
+- 派單 id：${dispatchId}
+- 發起方：主控端（工作流 ${wfDoc['id'] || ''}）
+- 收件方：${step['場景']}
 
 做什麼：
   ${step['目的']}
@@ -270,6 +308,8 @@ ${step['落盤'] ? `\n落盤位置：\n  ${step['落盤']}\n` : ''}${carried ? `
   ② 必須帶「${rules.差異集合小節}」
   ③ 必須帶「${rules.可累積物小節}」★ 少了這條＝這次活白做
   ④ 必須寫明「${rules.下一棒小節}」
+  ⑤ ★ 回執的**第一行**必須原樣寫出下面這行（用來確認這份回覆是回給這張派單的，不是別張）：
+     派單 id：${dispatchId}
 ${step['需確認'] === true || step['需確認'] === 'true' ? '\n⚠ 本步是門檻：做完要停下等人確認，不會自動接下一跳。\n' : ''}
 `
   const dispatchPath = path.join(runDir, rules.回執目錄, `派單-${stepNo}.md`)
@@ -288,12 +328,7 @@ ${step['需確認'] === true || step['需確認'] === 'true' ? '\n⚠ 本步是�
   state.下一個動作 = `把派單交給「${step['場景']}」，收回執後跑 \`工作流執行.mjs 回執 --run ${runId} --回執 <檔>\``
   writeState(runDir, state)
 
-  console.log('\n▶ 步驟' + stepNo + '/' + steps.length + ' 派單已產生')
-  console.log('  場景：' + step['場景'])
-  console.log('  派單檔：' + dispatchPath)
-  if (carried) console.log('  已帶入上一跳的可累積物（' + carried.split('\n').length + ' 行）')
-  if (step['需確認'] === true || step['需確認'] === 'true') console.log('  ⚠ 本步是門檻，收完回執會停下等人')
-  console.log('\n派單內容：\n' + dispatch)
+  return { dispatchPath, dispatch, dispatchId, carried }
 }
 
 /* ───────────────────────── resume ───────────────────────── */
@@ -358,10 +393,29 @@ function cmdReceipt () {
   const steps = stepsOf(wfDoc)
   const stepNo = state.目前步驤
   const step = steps[stepNo - 1]
-  if (!step) fail('目前步驤超出範圍')
+  if (!step) fail('目前步驟超出範圍')
+
+  const receiptPath = path.resolve(receiptArg)
+  const r = acceptReceipt(runDir, state, wfDoc, steps, receiptPath)
+  if (!r.ok) process.exit(1)
+  if (r.gate) return
+  console.log('\n✓ 回執合格，run 前進到步驟' + state.目前步驤 + (state.狀態 === '已完成' ? '（全部完成）' : ''))
+}
+
+/**
+ * ★ 收回執 = 驗收（fail-closed）＋ 推進（cmdReceipt 與 run 共用）。
+ *
+ * 為什麼要抽出來：手動收回執與迴圈收回執必須是**同一套**邏輯，
+ *   否則會出現「手動跑會擋、跑起來不擋」的漏洞——那等於自動推進沒有護欄。
+ *
+ * @returns {{ok:boolean, gate:boolean}}
+ */
+function acceptReceipt (runDir, state, wfDoc, steps, receiptPath) {
+  const stepNo = state.目前步驤
+  const step = steps[stepNo - 1]
+  if (!step) fail('目前步驟超出範圍')
 
   // ★ 收回執 = 驗收（fail-closed）
-  const receiptPath = path.resolve(receiptArg)
   let rc = 0
   try {
     execFileSync(process.execPath, [
@@ -379,7 +433,7 @@ function cmdReceipt () {
     state.下一個動作 = '修好回執（補可累積物）後重收'
     writeState(runDir, state)
     console.log('\n✗ 回執不合格 ⇒ run 已停在步驟' + stepNo + '（fail-closed）')
-    process.exit(1)
+    return { ok: false, gate: false }
   }
 
   // 存回執副本
@@ -415,7 +469,7 @@ function cmdReceipt () {
     writeState(runDir, state)
     console.log('\n✓ 回執合格，但本步是門檻 ⇒ run 停在步驟' + stepNo + '，等人確認')
     console.log('  確認後：跑 `工作流執行.mjs resume --run ' + runId + ' --門檻通過`')
-    return
+    return { ok: true, gate: true }
   }
 
   state.目前步驤 = stepNo + 1
@@ -426,7 +480,143 @@ function cmdReceipt () {
     state.下一個動作 = `跑 \`工作流執行.mjs step --run ${runId}\` 產生步驟${stepNo + 1} 的派單`
   }
   writeState(runDir, state)
-  console.log('\n✓ 回執合格，run 前進到步驟' + state.目前步驤 + (state.狀態 === '已完成' ? '（全部完成）' : ''))
+  return { ok: true, gate: false }
+}
+
+/* ───────────────────────── run（自動推進）───────────────────────── */
+
+/**
+ * ★ 自動推進：while 迴圈，把「產生派單 → 送出 → 等回覆 → 收回執 → 驗收 → 推進」
+ *   一次跑完。
+ *
+ * ★ 為什麼迴圈要寫在**腳本**裡而不是讓主控端 agent 一輪輪查：
+ *   等待期間 agent 每查一次就是一次 LLM 回合（token 成本隨時間線性成長、
+ *   context 越滾越大、還會被壓縮弄壞）。腳本迴圈等待期間 LLM 完全不參與，
+ *   只有需要人介入（門檻／拒絕／逾時）才停下來回報。
+ *
+ * ★ 停下來的條件（每一個都要寫清楚原因，不能默默停）：
+ *   ① 門檻（需確認: true）→ 狀態「等門檻」，等人 resume
+ *   ② 場景忙到逾時 → 狀態「已停（場景忙）」，附拒絕原因
+ *   ③ 回執不合格 → 狀態「已停」（既有 fail-closed 行為）
+ *   ④ 回執疑似錯配 → 狀態「已停（回執疑似錯配）」
+ *   ⑤ 逾時沒回覆 → 狀態「已停（逾時）」
+ *   ⑥ 全部步驟完成 → 狀態「已完成」
+ *
+ * 用法：
+ *   node 工作流執行.mjs run --root <工作台根> --run <run-id>
+ */
+function cmdRun () {
+  if (!runId) fail('run 需要 --run <run-id>')
+  const runDir = path.join(execRoot, runId)
+  if (!exists(runDir)) fail('找不到 run：' + runId, 2)
+
+  // 派單要送到場景去，需要引擎端的派單工具。
+  const dispatchTool = getArg('--派單工具') || process.env.DSH_DISPATCH_TOOL ||
+    path.join(root, '工具', '派單.mjs')
+  if (!exists(dispatchTool)) {
+    fail('找不到派單工具：' + dispatchTool + '（用 --派單工具 指定，或設 DSH_DISPATCH_TOOL）', 2)
+  }
+
+  const maxWaitSec = getArg('--等場景秒數') ? Number(getArg('--等場景秒數')) : 300
+
+  console.log('▶ 自動推進開始（run ' + runId + '）')
+  console.log('  派單工具：' + dispatchTool)
+  console.log('  場景忙最多等：' + maxWaitSec + ' 秒')
+  console.log('  ★ 迴圈在腳本裡跑，等待期間不呼叫模型（零 LLM 成本）\n')
+
+  while (true) {
+    const state = readState(runDir)
+    if (!state) fail('run 狀態檔讀不到')
+    if (state.狀態 === '已完成') {
+      console.log('\n✓ 全部步驟完成，run 結束')
+      break
+    }
+    if (state.狀態 === '等門檻') {
+      console.log('\n⏸ run 停在門檻（狀態：等門檻）——請人確認後跑')
+      console.log('  `工作流執行.mjs resume --run ' + runId + ' --門檻通過`')
+      break
+    }
+    if (state.狀態 !== '執行中') {
+      console.log('\n⏸ run 狀態是「' + state.狀態 + '」，不在「執行中」——自動推進停止')
+      if (state.卡點 && state.卡點 !== '- 無') console.log('  卡點：' + state.卡點.replace(/^- /, ''))
+      break
+    }
+
+    const wfDoc = parseYaml(readText(path.join(runDir, '工作流.yaml')))
+    const steps = stepsOf(wfDoc)
+    const idx = state.目前步驤 - 1
+    if (idx < 0 || idx >= steps.length) {
+      state.狀態 = '已完成'
+      state.目前步驤 = steps.length
+      writeState(runDir, state)
+      console.log('\n✓ 工作流已跑完所有步驟')
+      break
+    }
+    const step = steps[idx]
+    const stepNo = idx + 1
+
+    // ── 1. 產生派單 ──
+    const produced = produceStep(runDir, state, wfDoc, steps, step, stepNo)
+    console.log('\n▶ 步驟' + stepNo + '/' + steps.length + '（' + step['場景'] + '）派單已產生')
+
+    // ── 2. 送出去 + 等回覆 ──
+    const receiptOut = path.join(runDir, rules.回執目錄, `回執-${stepNo}.md`)
+    let rc = 0
+    let out = ''
+    try {
+      out = execFileSync(process.execPath, [
+        dispatchTool, '送',
+        '--檔', produced.dispatchPath,
+        '--回覆輸出', receiptOut,
+        '--收件', step['場景'],
+        '--等場景秒數', String(maxWaitSec),
+      ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+      rc = 0
+    } catch (e) {
+      rc = e.status || 1
+      out = (e.stdout ? e.stdout.toString() : '') + (e.stderr ? e.stderr.toString() : '')
+    }
+    for (const line of out.split('\n')) if (line.trim()) console.log('    ' + line)
+
+    // ── 3. 送出失敗分支：明確拒絕 / 逾時 / 錯配 ──
+    if (rc !== 0) {
+      state.狀態 = '已停'
+      if (rc === 4) {
+        state.卡點 = `- 步驟${stepNo} 派單被拒或回執疑似錯配（見上方輸出）`
+        state.下一個動作 = '看派單狀態檔的「拒絕原因」／「錯配原因」，處理後跑 `工作流執行.mjs resume --run ' + runId + '`'
+      } else if (rc === 3) {
+        state.卡點 = `- 步驟${stepNo} 逾時沒讀到回覆`
+        state.下一個動作 = '看場景是否還在做事；處理後跑 `工作流執行.mjs resume --run ' + runId + '`'
+      } else {
+        state.卡點 = `- 步驟${stepNo} 派送失敗（退出碼 ${rc}）`
+        state.下一個動作 = '修好後跑 `工作流執行.mjs resume --run ' + runId + '`'
+      }
+      writeState(runDir, state)
+      console.log('\n✗ 步驟' + stepNo + ' 沒跑成 ⇒ run 停在這裡（fail-closed），已寫明原因')
+      console.log('  卡點：' + state.卡點.replace(/^- /, ''))
+      process.exit(rc)
+    }
+
+    // ── 4. 收回執 + 驗收 + 推進 ──
+    if (!exists(receiptOut)) {
+      state.狀態 = '已停'
+      state.卡點 = `- 步驟${stepNo} 說送了但沒有回執檔`
+      state.下一個動作 = '手動檢查場景狀態後 resume'
+      writeState(runDir, state)
+      console.log('\n✗ 沒有回執檔 ⇒ run 已停')
+      process.exit(1)
+    }
+    const accepted = acceptReceipt(runDir, state, wfDoc, steps, receiptOut)
+    if (!accepted.ok) {
+      console.log('\n✗ 回執不合格 ⇒ run 已停在步驟' + stepNo)
+      process.exit(1)
+    }
+    if (accepted.gate) {
+      console.log('\n⏸ 門檻 ⇒ 自動推進停止，等人確認')
+      break
+    }
+    console.log('✓ 步驟' + stepNo + ' 完成，進入步驟' + state.目前步驤)
+  }
 }
 
 /* ───────────────────────── status ───────────────────────── */
@@ -455,10 +645,11 @@ function cmdStatus () {
 switch (cmd) {
   case 'start': cmdStart(); break
   case 'step': cmdStep(); break
+  case 'run': cmdRun(); break
   case 'resume': cmdResume(); break
   case '回執': cmdReceipt(); break
   case 'status': cmdStatus(); break
   default:
-    console.error('用法：node 工作流執行.mjs <start|step|回執|resume|status> --root <工作台根> [...]')
+    console.error('用法：node 工作流執行.mjs <start|step|run|回執|resume|status> --root <工作台根> [...]')
     process.exit(2)
 }
