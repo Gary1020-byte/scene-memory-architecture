@@ -465,6 +465,26 @@ function cmdCheck (root, memRoot, rules, name) {
     if (fs.existsSync(path.join(dir, d))) ok.push(d + '/'); else problems.push('缺目錄 ' + d + '/')
   }
 
+  // ★ 第二份記憶檔（孤兒）
+  //   來源實測（2026-11-03）：場景自己寫記憶時寫錯檔名，會多出
+  //   「<場景名>場景私有記憶.md」。兩份會分叉（inode 不同）而且 check 只看真源
+  //   ⇒ 孤兒沒有人管；若是硬連結則內容一致但重複檔名會讓其他工具困惑。
+  {
+    const real = path.join(dir, rules.memoryFile)
+    if (fs.existsSync(real)) {
+      const ri = fs.statSync(real)
+      for (const f of fs.readdirSync(dir)) {
+        if (f === rules.memoryFile || !f.endsWith('場景私有記憶.md')) continue
+        const si = fs.statSync(path.join(dir, f))
+        if (si.ino === ri.ino) {
+          problems.push('場景目錄有第二份記憶檔「' + f + '」（與真源同一個硬連結）⇒ 只留「' + rules.memoryFile + '」')
+        } else {
+          problems.push('場景目錄有孤兒記憶檔「' + f + '」（inode 與真源不同）⇒ 兩份會分叉，請移進歸檔/')
+        }
+      }
+    }
+  }
+
   // ★ 場景邊界（.git 存在性）—— 缺了會靜默降級，專屬技能全部消失
   //   真實場景用真 .git 目錄；公開倉庫的示範用 .git-marker 說明檔
   //   （git 不追蹤名為 .git 的檔案，巢狀無 commit 的倉庫又會讓 git add -A 失敗）

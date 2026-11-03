@@ -142,6 +142,16 @@ else
 fi
 
 echo
+echo "【V18】場景目錄有第二份記憶檔（孤兒）⇒ 必須擋"
+reset_scene
+cp "$WORK/場景/$SCENE/場景私有記憶.md" "$WORK/場景/$SCENE/示範場景私有記憶.md"
+expect "孤兒記憶檔被擋" 1 "孤兒記憶檔"
+reset_scene
+ln "$WORK/場景/$SCENE/場景私有記憶.md" "$WORK/場景/$SCENE/示範場景私有記憶.md"
+expect "第二份記憶檔（硬連結）被擋" 1 "第二份記憶檔"
+reset_scene
+
+echo
 echo "═══ 工作流校驗（V12–V14）═══"
 
 WFTOOL="$HERE/工作流校驗.mjs"
