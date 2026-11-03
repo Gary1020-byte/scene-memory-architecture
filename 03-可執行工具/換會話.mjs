@@ -90,9 +90,14 @@ function readIndexSession (indexPath, name) {
 /** 場景配置（引擎端面板 json）裡的 sessionId。 */
 function readConfigSession (name, sceneId) {
   const cands = []
-  // repo 端示範用 場景/<名>/場景配置.json；引擎端用 <根>/scenarios/<id>.json
+  // repo 端示範用 場景/<名>/場景配置.json
   cands.push(path.join(dir, rules['場景配置檔名'] || '場景配置.json'))
-  if (sceneId) cands.push(path.join(root, 'scenarios', sceneId + '.json'))
+  // 引擎端：<根>/scenarios/<場景id>.json 或 <根>/外殼/scenarios/<場景id>.json
+  // ★ 檔名是**場景 id**（英文 kebab-case），不是場景名 —— 用場景名找會找不到。
+  if (sceneId) {
+    cands.push(path.join(root, 'scenarios', sceneId + '.json'))
+    cands.push(path.join(root, '外殼', 'scenarios', sceneId + '.json'))
+  }
   cands.push(path.join(root, 'scenarios', name + '.json'))
   cands.push(path.join(root, '外殼', 'scenarios', name + '.json'))
   for (const c of cands) {
@@ -145,6 +150,32 @@ function cmdPlan () {
     problems.push('§₀ 沒有下一步')
   } else {
     console.log('  ✓ §₀ 有下一步')
+  }
+
+  // ④ §₀ 現在就已經超紅線？⇒ 換會話寫署名後只會更大，先擋住
+  const sec0Now = (() => {
+    const ls = body.split('\n')
+    const s = ls.findIndex((l) => l.startsWith('## §〇'))
+    if (s < 0) return null
+    const out = [ls[s]]
+    for (let i = s + 1; i < ls.length; i++) {
+      if (/^##\s/.test(ls[i])) break
+      out.push(ls[i])
+    }
+    return out.join('\n')
+  })()
+  if (sec0Now) {
+    const sz = Buffer.byteLength(sec0Now)
+    const max = rules.sec0MaxBytes || 4096
+    // 署名會再加幾十字 ⇒ 預留一點餘額
+    const headroom = 80
+    if (sz + headroom > max) {
+      console.log('  ✗ §₀ 現在 ' + sz + ' B，換會話寫署名後會超過紅線 ' + max + ' B')
+      console.log('    ⇒ 先把 §₀ 瘦身（歷史搬進 §五），再換')
+      problems.push('§₀ 換會話後會超紅線（' + sz + ' B + 署名）')
+    } else {
+      console.log('  ✓ §₀ ' + sz + ' B（加署名後仍在 ' + max + ' B 內）')
+    }
   }
 
   // ③ 三處目前的會話 id

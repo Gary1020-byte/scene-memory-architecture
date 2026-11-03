@@ -82,6 +82,9 @@ function readExport (p) {
     會話id: String(o['會話id'] || o.sessionId || o.id || '').trim(),
     會話名: String(o['會話名'] || o.sessionName || o.title || '').trim(),
     場景id: String(o['場景id'] || o.sceneId || '').trim(),
+    // 場景名優先：目錄名用中文（「場景甲」）比英文 id（「sc-a」）可讀，
+    // 而且引擎端的面板 json 的 name 就是中文。
+    場景名: String(o['場景名'] || o.sceneName || '').trim(),
     開始時間: String(o['開始時間'] || o.startedAt || o.createdAt || '').trim(),
     訊息: Array.isArray(o['訊息'] || o.messages) ? (o['訊息'] || o.messages) : [],
   }))
@@ -105,7 +108,8 @@ function extractOne (rec, sceneName) {
   lines.push('|---|---|')
   lines.push('| 會話 id | `' + rec.會話id + '` |')
   lines.push('| 會話名 | ' + (rec.會話名 || sceneName) + ' |')
-  lines.push('| 場景 id | ' + (rec.場景id || sceneName) + ' |')
+  lines.push('| 場景 | ' + (rec.場景名 || sceneName) + ' |')
+  if (rec.場景id && rec.場景id !== rec.場景名) lines.push('| 場景 id | ' + rec.場景id + ' |')
   lines.push('| 開始時間 | ' + (rec.開始時間 || '（未提供）') + ' |')
   lines.push('| 訊息數 | ' + rec.訊息.length + ' |')
   lines.push('')
@@ -139,22 +143,28 @@ function buildIndex () {
         const full = path.join(dir, f)
         const body = readText(full)
         const pick = (k) => {
+          // ★ 兩個跳脫都不能少：`\|` 是跳脫直線，`\$` 是跳脫結尾錨點。
+          //   少了 `\$`，`$` 會被當成字面 dollar ⇒ 永遠匹配不到任何一列。
           const m = new RegExp('^\\| ' + k + ' \\| (.*?) \\|$', 'm').exec(body)
           return m ? m[1].replace(/`/g, '').trim() : ''
         }
+        // 場景欄優先取檔案裡的「場景」列；沒有就退回目錄名
+        const sceneCell = pick('場景') || sceneName
         rows.push({
-          場景id: sceneName,
+          場景: sceneCell,
+          場景id: sceneCell,
           會話id: pick('會話 id'),
           會話名: pick('會話名'),
           開始時間: pick('開始時間'),
           訊息數: pick('訊息數'),
           路徑: path.relative(root, full),
           摘要: (pick('會話名') || sceneName),
+          _檔案: full,
         })
       }
     }
   }
-  const cols = rules['會話檔案索引欄位'] || ['場景id', '會話id', '會話名', '開始時間', '訊息數', '路徑', '摘要']
+  const cols = rules['會話檔案索引欄位'] || ['場景', '會話id', '會話名', '開始時間', '訊息數', '路徑', '摘要']
   const out = []
   out.push('# 會話檔案索引')
   out.push('')
@@ -200,7 +210,7 @@ function cmdExtract () {
     return 1
   }
   for (const r of recs) {
-    const scene = sceneName || r.場景id || r.會話名
+    const scene = sceneName || r.場景名 || r.場景id || r.會話名
     if (!scene) {
       console.error('✗ 這筆會話沒有場景名，請用 --場景 指定')
       return 2
@@ -241,7 +251,7 @@ function cmdCheck () {
     const body = readText(idx)
     let rows = 0
     for (const line of body.split(/\r?\n/)) {
-      if (!line.startsWith('| ') || line.startsWith('|---') || line.includes('場景id |')) continue
+      if (!line.startsWith('| ') || line.startsWith('|---') || /^\|\s*場景\s*\|/.test(line)) continue
       rows++
       const cells = line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((s) => s.trim().replace(/`/g, ''))
       // 欄位順序照 會話檔案索引欄位：場景id 會話id 會話名 開始時間 訊息數 路徑 摘要

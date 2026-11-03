@@ -289,6 +289,22 @@ swap_expect "指定新會話 id 全部對得上" 0 "已同步" \
 swap_expect "指定新會話 id 但有一處沒改 ⇒ 擋" 1 "不是新會話 id" \
   node "$HERE/換會話.mjs" 檢查 --root "$SCTMP" --場景 示範場景 --新會話id session-demo0002
 
+# §₀ 貼著紅線 ⇒ 換會話寫署名後會超線 ⇒ 必須在換之前就擋
+cp "$ROOT/04-模板/示範工作台.乾淨/場景/示範場景/場景私有記憶.md" "$SCTMP/場景/示範場景/場景私有記憶.md"
+python3 - "$SCTMP/場景/示範場景/場景私有記憶.md" <<'PYEOF' 2>/dev/null || true
+import sys, re
+p = sys.argv[1]
+t = open(p, encoding='utf-8').read()
+# 灌到 4090 B 左右（加署名就會超 4096）
+h = t.index('## §〇')
+e = t.index('\n## ', h + 5)
+fill = '\n- ' + ('填' * 3900)
+t = t[:e] + fill + t[e:]
+open(p, 'w', encoding='utf-8').write(t)
+PYEOF
+swap_expect "§₀ 貼紅線時擋（換完會爆線）" 1 "換會話後會超紅線" \
+  node "$HERE/換會話.mjs" 計畫 --root "$SCTMP" --場景 示範場景
+
 rm -rf "$SCTMP"
 
 echo
