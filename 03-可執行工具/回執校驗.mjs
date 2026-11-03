@@ -82,6 +82,53 @@ function contentLines (arr) {
     .filter(l => !/^\(暫無\)$/.test(l))
 }
 
+/**
+ * 抓出某個小節的「整段原文」，含它底下的子節。
+ * @param {string} text - 整份 markdown
+ * @param {string} key - 小節關鍵字（例如 '§五'）
+ * @returns {string} 該小節從標題到下一個同級標題之間的全部文字
+ */
+export function sectionBlock (text, key) {
+  const lines = String(text).split('\n')
+  let start = -1
+  let level = 0
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(\s*)(#{1,6})\s*(.+?)\s*$/.exec(lines[i])
+    if (!m) continue
+    if (!m[3].includes(key)) continue
+    start = i
+    level = m[2].length
+    break
+  }
+  if (start < 0) return ''
+  const out = []
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = /^\s*(#{1,6})\s+/.exec(lines[i])
+    if (m && m[1].length <= level) break
+    out.push(lines[i])
+  }
+  return out.join('\n')
+}
+
+/**
+ * 兩段文字有沒有長度 ≥ minRun 的公共子字串。
+ * @param {string} a - 第一段（已去空白與 markdown）
+ * @param {string} b - 第二段（已去空白與 markdown）
+ * @param {number} minRun - 最短公共子字串長度
+ * @returns {boolean}
+ */
+export function hasCommonRun (a, b, minRun) {
+  if (!a || !b) return false
+  if (b.includes(a)) return true
+  // 以較短的那段滑窗，比對是否整段出現在較長的那段裡
+  const short = a.length <= b.length ? a : b
+  const long = a.length <= b.length ? b : a
+  for (let i = 0; i + minRun <= short.length; i++) {
+    if (long.includes(short.slice(i, i + minRun))) return true
+  }
+  return false
+}
+
 /* ───────────────────────── 主流程 ───────────────────────── */
 
 const problems = []
@@ -121,7 +168,10 @@ if (!accumFile) {
   const accumText = readText(accumFile)
   const accumSections = parseReceipt(accumText).sections
   const landingKey = Object.keys(accumSections).find(k => k.includes(rules.累積落點小節))
-  const landingText = landingKey ? accumSections[landingKey].join('\n') : ''
+  // ★ 落點文字要抓「§五 的整段原文（含它底下的 ### 子節）」。
+  //   parseSections 是扁平的（最後一個標題贏），§五 底下的 ### 子節會把內容
+  //   從 §五 底下挖走 ⇒ 明明寫進去了卻判定沒落地。
+  const landingText = sectionBlock(accumText, rules.累積落點小節) || (landingKey ? accumSections[landingKey].join('\n') : '')
   // 場景專屬技能也算落地位置
   const skillDir = path.join(memRoot, sceneName, rules.技能目錄)
   let skillText = ''
@@ -140,9 +190,15 @@ if (!accumFile) {
   } else {
     // 每條可累積物都要在場景記憶的落點小節或專屬技能裡找得到
     const haystack = landingText + '\n' + skillText
+    const hay = haystack.replace(/[\s`*_]/g, '')
+    // ★ 不要「逐字」比對：場景落地時可能改寫措辭或用簡體（回執簡、記憶繁），
+    //   逐字比對會把「明明寫進去了」判成沒落地。
+    //   改用「最長公共子字串 ≥ 8 字」——檔案路徑、指令、識別碼這類字串一定會重現，
+    //   足以證明它真的落地了，又不會被措辭差異擋下來。
     const missed = accumLines.filter(l => {
       const norm = l.replace(/[\s`*_]/g, '')
-      return norm.length >= 4 && !haystack.replace(/[\s`*_]/g, '').includes(norm)
+      if (norm.length < 4) return false
+      return !hasCommonRun(norm, hay, 8)
     })
     if (missed.length) {
       for (const m of missed) {
