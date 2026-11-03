@@ -289,6 +289,18 @@ swap_expect "指定新會話 id 全部對得上" 0 "已同步" \
 swap_expect "指定新會話 id 但有一處沒改 ⇒ 擋" 1 "不是新會話 id" \
   node "$HERE/換會話.mjs" 檢查 --root "$SCTMP" --場景 示範場景 --新會話id session-demo0002
 
+# ★ 三處一致，但綁定的會話已被引擎歸檔 ⇒ 面板指向死會話 ⇒ 必須擋
+#   （症狀同「少同步一處」，但根因不同 ⇒ 必須分開查）
+cat > "$SCTMP/引擎狀態.json" <<'EOF'
+{
+  "說明": "引擎端狀態檔（測試用）",
+  "已歸檔會話": ["session-demo0001"]
+}
+EOF
+swap_expect "三處一致但會話已被歸檔 ⇒ 擋" 1 "已被歸檔" \
+  node "$HERE/場景記憶.mjs" check --場景 示範場景 --root "$SCTMP"
+rm -f "$SCTMP/引擎狀態.json"
+
 # §₀ 貼著紅線 ⇒ 換會話寫署名後會超線 ⇒ 必須在換之前就擋
 cp "$ROOT/04-模板/示範工作台.乾淨/場景/示範場景/場景私有記憶.md" "$SCTMP/場景/示範場景/場景私有記憶.md"
 python3 - "$SCTMP/場景/示範場景/場景私有記憶.md" <<'PYEOF' 2>/dev/null || true

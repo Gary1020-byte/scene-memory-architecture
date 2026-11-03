@@ -486,6 +486,29 @@ function cmdCheck (root, memRoot, rules, name) {
     ok.push('身份索引：' + path.relative(root, indexPath))
   }
   const ident = findIdentity(indexPath, name, root)
+
+  // ★★ 綁定的會話還活著嗎？
+  //   三處「一致」不代表那條會話還在 —— 面板可能指向一條**已歸檔**的會話。
+  //   症狀跟少同步一處完全一樣（切場景像換了個人），但根因不同 ⇒ 必須分開查。
+  //   引擎狀態由引擎端寫成 <工作台根>/引擎狀態.json（repo 不認識任何引擎的私有格式）。
+  {
+    const stPath = path.join(root, rules['引擎狀態檔名'] || '引擎狀態.json')
+    if (fs.existsSync(stPath)) {
+      try {
+        const st = JSON.parse(fs.readFileSync(stPath, 'utf8'))
+        const arch = st[rules['引擎狀態已歸檔欄位'] || '已歸檔會話'] || []
+        const sid = ident?.sessionId || ''
+        if (sid && arch.includes(sid)) {
+          problems.push('面板綁定的會話已被歸檔（' + sid + '）⇒ 面板指向死會話（症狀同「少同步一處」，但根因不同）')
+        } else if (sid) {
+          ok.push('綁定會話仍活著')
+        }
+      } catch (e) {
+        warns.push('引擎狀態檔讀不動（' + path.basename(stPath) + '）：' + e.message)
+      }
+    }
+  }
+
   const cardPath = path.join(dir, rules.identityFile)
   if (!ident) {
     problems.push('身份索引裡沒有這張場景卡：' + name)
