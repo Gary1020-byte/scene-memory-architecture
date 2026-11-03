@@ -1,0 +1,26 @@
+{
+  "_說明": "場景定義（面板）模板。放到引擎端的場景目錄，檔名 = <場景id>.json。★ name 欄必須跟場景目錄名一致 —— 校驗工具靠它反查目錄。sessionId 先留空，建完會話再回填。",
+  "id": "<場景id>",
+  "name": "<場景名>",
+  "description": "<一句話說清這個場景幹什麼>",
+  "layout": "grid",
+  "theme": "dark",
+  "panels": [
+    {
+      "id": "<面板id>-ai",
+      "title": "AI·<場景名>",
+      "sub": "",
+      "type": "harness",
+      "sessionTitle": "<場景名>",
+      "sessionId": "",
+      "pinTarget": [
+        "<場景名>"
+      ],
+      "col": 1,
+      "row": 1,
+      "w": 1,
+      "h": 5
+    }
+  ],
+  "first": false
+}
