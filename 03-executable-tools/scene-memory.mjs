@@ -45,7 +45,7 @@ const RULE_KEY_ALIAS = {
   mainOverLimitAction: '主檔案超標處置',
   sec0OverLimitAction: '交接段超標處置',
   fingerprintLength: '指紋長度',
-  sec0Subsections: '交接段小節',
+  sec0Subsections: '交接段小節', sec0Heading: '交接段標題',
   dutyHeading: '職責區塊標題',
   dutyMinItems: '職責最少條數',
   memoryFile: '記憶檔名',
@@ -178,9 +178,18 @@ function normalizeRules (raw) {
 }
 
 function loadRules (root) {
+  // ★ Both file names are accepted: the engine-side tool directory keeps 交接規則.json.
+  //   There must be exactly ONE rules file per directory — two files with different names
+  //   means two naming conventions in the same place.
+  // ★ Order matters: the WORKBENCH ROOT's rules file wins over the one bundled next to
+  //   the tool. The root describes the workbench actually in use (the engine side keeps
+  //   Chinese file names there); the bundled one is only the repo's own default.
+  //   Both file names are accepted — but there must be exactly ONE rules file per layer.
   const candidates = [
-    path.join(HERE, 'handover-rules.json'),
+    path.join(root || '', '交接規則.json'),
     path.join(root || '', 'handover-rules.json'),
+    path.join(HERE, '交接規則.json'),
+    path.join(HERE, 'handover-rules.json'),
     path.join(HERE, '..', '04-templates', 'handover-rules.json'),
   ]
   for (const p of candidates) {
@@ -196,6 +205,29 @@ function loadRules (root) {
 }
 
 /* ───────────────────────── path resolution ───────────────────────── */
+
+
+/**
+ * CLI flag aliases: English is canonical, Chinese is accepted.
+ * ★ The engine-side tool directory calls with Chinese flags; the repo calls with English.
+ *   Both must work in either direction.
+ */
+const ARG_ALIASES = {
+  '--scene': ['--場景'],
+  '--rules': ['--規則'],
+  '--root': ['--根'],
+}
+
+/** Read a flag by its canonical name, falling back to its aliases. */
+function getArgAny (args, name) {
+  const i = args.indexOf(name)
+  if (i >= 0) return args[i + 1] ?? null
+  for (const a of (ARG_ALIASES[name] || [])) {
+    const j = args.indexOf(a)
+    if (j >= 0) return args[j + 1] ?? null
+  }
+  return null
+}
 
 const argv = process.argv.slice(2)
 const val = (k) => { const i = argv.indexOf(k); return i >= 0 ? (argv[i + 1] || '') : '' }
@@ -214,9 +246,14 @@ function resolveRoot () {
  *   environment variable → <root>/scenes → <root>/engine-data/.dsh/scene-memory
  * The first one that exists and is a directory wins.
  */
-function resolveMemoryRoot (root) {
+function resolveMemoryRoot (root, rules) {
+  // ★ The rules file decides where the scenes live — the engine side keeps Chinese
+  //   directory names, the repo keeps English ones. The hardcoded list below is only
+  //   the fallback when no rules file says otherwise.
   const cands = [
     process.env.DSH_SCENE_MEMORY,
+    ...((rules && rules.memoryRootCandidates) || []).map((p) => String(p).replace('<根>', root)),
+    path.join(root, (rules && rules.sceneRootDir) || 'scenes'),
     path.join(root, 'scenes'),
     path.join(root, 'engine-data', '.dsh', 'scene-memory'),
   ].filter(Boolean)
@@ -227,8 +264,9 @@ function resolveMemoryRoot (root) {
 }
 
 /** Identity index candidate chain (same reasoning: the index moving must not blind the tool) */
-function resolveIndexPath (root) {
+function resolveIndexPath (root, rules) {
   const cands = [
+    path.join(root, (rules && rules.sceneRootDir) || 'scenes', (rules && rules.indexFile) || '_scene-identity-index.md'),
     path.join(root, 'scenes', '_scene-identity-index.md'),
     path.join(root, '外壳', 'scenarios', '_scene-identity-index.md'),
   ]
@@ -249,8 +287,13 @@ const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch { retu
 const sizeOf = (p) => { try { return fs.statSync(p).size } catch { return 0 } }
 
 /** Byte size of the §0 section (from the §0 heading to the next heading of the same level) */
-function sec0Range (txt) {
-  const mNew = txt.match(/^## §0[^\n]*$/m)
+function sec0Range (txt, rules) {
+  // ★ The §0 heading is part of the data format, so it comes from the rules file
+  //   (the engine side keeps the Chinese heading, the repo keeps the English one).
+  const heading = (rules && rules.sec0Heading) || '## §0 Current Handover'
+  const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const mNew = txt.match(new RegExp('^' + esc.replace(/\s.*$/, '[^\\n]*') + '$', 'm'))
+  || txt.match(/^## §0[^\n]*$/m)
   const mOld = txt.match(/^## (?:〇|§〇)[、 ]?當前交接[^\n]*$/m)
   const h = mNew ? mNew.index : (mOld ? mOld.index : -1)
   if (h < 0) return { h: -1, bytes: 0, text: '', hasOld: !!mOld, hasNew: !!mNew }
@@ -455,7 +498,7 @@ function cmdStamp (root, memRoot, rules, name) {
     console.error('✗ Cannot find scene directory: ' + dir)
     return 2
   }
-  const indexPath = resolveIndexPath(root)
+  const indexPath = resolveIndexPath(root, rules)
   const ident = findIdentity(indexPath, name, root)
   if (!ident) {
     console.error('✗ Cannot find this scene in the identity index: ' + name)
@@ -489,7 +532,7 @@ function cmdHandover (root, memRoot, rules, name) {
   let body = fs.readFileSync(main, 'utf8')
 
   // ① archive the old snapshot
-  const ident = findIdentity(resolveIndexPath(root), name, root)
+  const ident = findIdentity(resolveIndexPath(root, rules), name, root)
   const sid6 = (ident?.sessionId || '').replace('session-', '').slice(0, 6) || 'nosid'
   const archFile = `${rules.memoryFile.replace(/\.md$/, '')}-${stampId()}-${sid6}.md`
   fs.writeFileSync(path.join(dir, rules.archiveDir, archFile), body, 'utf8')
@@ -587,7 +630,7 @@ function cmdCheck (root, memRoot, rules, name) {
   }
 
   // identity index + card fingerprint
-  const indexPath = resolveIndexPath(root)
+  const indexPath = resolveIndexPath(root, rules)
   if (!fs.existsSync(indexPath)) {
     problems.push('Cannot find identity index: ' + indexPath + ' (the tool does not know the scene ↔ session mapping)')
   } else {
@@ -668,7 +711,7 @@ function cmdCheck (root, memRoot, rules, name) {
   }
 
   // the §0 red line
-  const s0 = sec0Range(main)
+  const s0 = sec0Range(main, rules)
   if (s0.h < 0) {
     problems.push('Missing §0 handover heading (## §0)')
   } else {
@@ -734,8 +777,9 @@ function cmdList (memRoot, rules) {
 /* ───────────────────────── entry point ───────────────────────── */
 
 const root = resolveRoot()
-const memRoot = resolveMemoryRoot(root)
 const rules = loadRules(root)
+const memRoot = resolveMemoryRoot(root, rules)
+
 const cmd = argv[0]
 
 if (cmd === 'help' || cmd === '--help' || cmd === '-h') {

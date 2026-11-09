@@ -85,6 +85,7 @@ export const DEFAULT_RULES = {
   projectMaxBytes: 8192,
   skillMaxBytes: 12288,
   fingerprintLength: 16,
+  sec0Heading: '## §0 Current Handover',
   sec0Subsections: [
     '### 1) Last Handover',
     '### 2) Current Projects',
@@ -162,14 +163,25 @@ export function normalizeRules (raw) {
  *   ① an explicitly given rules file (--rules <path>) —— ★ the engine side uses this to
  *     bring its own naming
  *   ② <workbench-root>/handover-rules.json
- *   ③ the handover-rules.json next to the tool (the repo default)
- *   ④ 04-templates/handover-rules.json
+ *   ③ <workbench-root>/交接規則.json      ← the engine-side workbench keeps the Chinese name
+ *   ④ the handover-rules.json next to the tool (the repo default)
+ *   ⑤ the 交接規則.json next to the tool   ← when these tools live in the engine's tool dir
+ *   ⑥ 04-templates/handover-rules.json
+ *
+ * ★ Both file names are accepted on purpose: the rules file is the ONE place where the
+ *   engine-neutral layer and the engine layer meet. Same keys, each layer's own values
+ *   (the repo uses English file names, the engine uses Chinese ones).
+ *   There must be exactly ONE rules file per tool directory — two files with different
+ *   names means two different naming conventions in the same directory, and the tools
+ *   silently pick whichever they find first.
  */
 export function loadRules (root, explicit) {
   const candidates = [
     explicit,
     path.join(root || '', 'handover-rules.json'),
+    path.join(root || '', '交接規則.json'),
     path.join(HERE, 'handover-rules.json'),
+    path.join(HERE, '交接規則.json'),
     path.join(HERE, '..', '04-templates', 'handover-rules.json'),
   ].filter(Boolean)
   for (const p of candidates) {
@@ -379,4 +391,60 @@ export function writeText (p, t) {
   fs.mkdirSync(path.dirname(p), { recursive: true })
   fs.writeFileSync(p, t, 'utf8')
 }
+
+/**
+ * CLI flag aliases.
+ * ★ The English flag is the canonical one; the Chinese one is accepted as an alias.
+ *   The engine-side tool directory calls these tools with Chinese flags, and the repo
+ *   calls them with English ones. Both must work, in either direction, or a rename in
+ *   one layer silently breaks the other.
+ */
+export const ARG_ALIASES = {
+  '--scene': ['--場景'],
+  '--name': ['--名'],
+  '--duties': ['--職責'],
+  '--rules': ['--規則'],
+  '--file': ['--檔'],
+  '--dir': ['--目錄'],
+  '--spec': ['--規格'],
+  '--session': ['--會話'],
+  '--keyword': ['--關鍵詞'],
+  '--engine-export': ['--引擎端'],
+  '--reply-output': ['--回覆輸出'],
+  '--recipient': ['--收件'],
+  '--dispatch': ['--派單'],
+  '--dispatch-tool': ['--派單工具'],
+  '--receipt': ['--回執'],
+  '--accumulation-file': ['--累積檔'],
+  '--workflow': ['--工作流'],
+  '--gate-passed': ['--門檻通過', '--gate通過'],
+  '--new-session-id': ['--新會話id'],
+  '--wait-scene-seconds': ['--等場景秒數', '--等scene秒數'],
+}
+
+
+/**
+ * Whether a flag is present, by its canonical name or any alias.
+ * ★ Use this for presence checks: a flag that takes no value (--gate-passed) may be the
+ *   last argument, in which case getArgAny() returns null even though the flag IS there.
+ */
+export function hasFlagAny (args, name) {
+  if (args.includes(name)) return true
+  return (ARG_ALIASES[name] || []).some((a) => args.includes(a))
+}
+
+/**
+ * Read a flag by its canonical name, falling back to its aliases.
+ * Returns null when the flag is absent.
+ */
+export function getArgAny (args, name) {
+  const i = args.indexOf(name)
+  if (i >= 0) return args[i + 1] ?? null
+  for (const a of (ARG_ALIASES[name] || [])) {
+    const j = args.indexOf(a)
+    if (j >= 0) return args[j + 1] ?? null
+  }
+  return null
+}
+
 export function exists (p) { return fs.existsSync(p) }

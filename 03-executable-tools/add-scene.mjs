@@ -24,18 +24,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import {
-  loadRules, resolveMemoryRoot, resolveIndexPath, readText, writeText, exists, today,
-} from './workbench.mjs'
+  loadRules, resolveMemoryRoot, resolveIndexPath, readText, writeText, exists, today, getArgAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 
 const root = getArg('--root')
 const sceneId = getArg('--id')
-const sceneName = getArg('--name')
-const dutiesArg = getArg('--duties')
-const dirName = getArg('--dir')
-const specFile = getArg('--spec') || getArg('--規格')
+const sceneName = getArgA('--name')
+const dutiesArg = getArgA('--duties')
+const dirName = getArgA('--dir')
+const specFile = getArgA('--spec') || getArg('--規格')
 
 if (!root) {
   console.error('Usage: node add-scene.mjs --root <workbench-root> --id <scene-id> --name <scene-name> [--duties "a;b;c"] [--dir <dir-name>]')
@@ -43,8 +43,8 @@ if (!root) {
 }
 
 const rules = loadRules(root)
-const memRoot = resolveMemoryRoot(root)
-const indexPath = resolveIndexPath(root)
+const memRoot = resolveMemoryRoot(root, rules)
+const indexPath = resolveIndexPath(root, rules)
 
 /* ───────────────────────── templates ───────────────────────── */
 

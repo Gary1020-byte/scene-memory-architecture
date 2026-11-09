@@ -24,15 +24,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  loadRules, resolveMemoryRoot, readText, exists, parseSections,
-} from './workbench.mjs'
+  loadRules, resolveMemoryRoot, readText, exists, parseSections, getArgAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 
 const root = getArg('--root')
-const sceneName = getArg('--scene')
-const receiptPath = getArg('--receipt')
+const sceneName = getArgA('--scene')
+const receiptPath = getArgA('--receipt')
 const accumPathArg = getArg('--accum-file')
 
 if (!root || !sceneName || !receiptPath) {
@@ -41,7 +41,7 @@ if (!root || !sceneName || !receiptPath) {
 }
 
 const rules = loadRules(root)
-const memRoot = resolveMemoryRoot(root)
+const memRoot = resolveMemoryRoot(root, rules)
 
 /* ───────────────────────── find the scene memory file ───────────────────────── */
 

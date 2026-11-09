@@ -27,17 +27,17 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
   loadRules, resolveMemoryRoot, resolveIndexPath, resolveWorkflowDir, resolveExecRoot,
-  parseYaml, readText, writeText, exists, now, today, sectionLines,
-} from './workbench.mjs'
+  parseYaml, readText, writeText, exists, now, today, sectionLines, getArgAny, hasFlagAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 const cmd = args[0]
 
 const root = getArg('--root')
-const wfId = getArg('--workflow')
+const wfId = getArgA('--workflow')
 const runId = getArg('--run')
-const receiptArg = getArg('--receipt')
+const receiptArg = getArgA('--receipt')
 
 if (!root) {
   console.error('Usage: node run-workflow.mjs <start|step|receipt|status> --root <workbench-root> [...]')
@@ -45,7 +45,7 @@ if (!root) {
 }
 
 const rules = loadRules(root)
-const memRoot = resolveMemoryRoot(root)
+const memRoot = resolveMemoryRoot(root, rules)
 const execRoot = resolveExecRoot(root)
 const wfDir = resolveWorkflowDir(root)
 
@@ -358,7 +358,7 @@ function cmdResume () {
     return
   }
   // ★ Gate passed: skip the current step, continue to the next hop
-  if (getArg('--gate-passed') !== null) {
+  if (hasFlagAny(args, '--gate-passed')) {
     const wfDoc0 = parseYaml(readText(path.join(runDir, 'workflow.yaml')))
     const steps0 = stepsOf(wfDoc0)
     const stepNo0 = state.currentStep
@@ -521,7 +521,7 @@ function cmdRun () {
   if (!exists(runDir)) fail('Cannot find run: ' + runId, 2)
 
   // Sending a dispatch to a scene needs the engine-side dispatch tool.
-  const dispatchTool = getArg('--dispatch-tool') || process.env.DSH_DISPATCH_TOOL ||
+  const dispatchTool = getArgA('--dispatch-tool') || process.env.DSH_DISPATCH_TOOL ||
     path.join(root, '工具', '派單.mjs')
   if (!exists(dispatchTool)) {
     fail('Cannot find dispatch tool: ' + dispatchTool + ' (use --dispatch-tool, or set DSH_DISPATCH_TOOL)', 2)

@@ -31,27 +31,41 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import {
-  HERE, loadRules, resolveMemoryRoot, resolveIndexPath, readText, writeText, exists, now,
-} from './workbench.mjs'
+  HERE, loadRules, resolveMemoryRoot, resolveIndexPath, readText, writeText, exists, now, getArgAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const cmd = args[0]
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 
 const root = getArg('--root')
-const sceneName = getArg('--scene')
+const sceneName = getArgA('--scene')
 if (!root || !sceneName) {
   console.error('Usage: node switch-session.mjs <plan|check> --root <workbench-root> --scene <scene-name> [--new-session-id <id>]')
   process.exit(2)
 }
 const rules = loadRules(root)
-const memRoot = resolveMemoryRoot(root)
+const memRoot = resolveMemoryRoot(root, rules)
 const dir = path.join(memRoot, sceneName)
 const memFile = path.join(dir, rules.memoryFile)
 
 /* ───────────────────────── Preconditions ───────────────────────── */
 
 /** Whether the five §0 subsections are all present and next steps were written. */
+
+/**
+ * Locate the scene-memory validator next to this tool.
+ * ★ The repo names it scene-memory.mjs; the engine-side tool directory keeps the Chinese
+ *   name 場景記憶.mjs. Both are accepted so the same tool works in either layer.
+ */
+function sceneMemoryTool () {
+  for (const n of ['scene-memory.mjs', '場景記憶.mjs']) {
+    const p = path.join(HERE, n)
+    if (exists(p)) return p
+  }
+  return path.join(HERE, 'scene-memory.mjs')
+}
+
 function inspectSec0 (body) {
   const subs = rules.sec0Subsections || []
   const missing = subs.filter((s) => !body.includes(s))
@@ -185,7 +199,7 @@ function cmdPlan () {
   }
 
   // ③ the current session id in the three places
-  const indexPath = resolveIndexPath(root)
+  const indexPath = resolveIndexPath(root, rules)
   const ident = readIndexSession(indexPath, sceneName)
   const cfg = readConfigSession(sceneName, ident?.id)
   const sig = readSignature(body)
@@ -227,7 +241,7 @@ function cmdPlan () {
 }
 
 function cmdCheck () {
-  const newId = getArg('--new-session-id')
+  const newId = getArgA('--new-session-id')
   const problems = []
   const warns = []
   const ok = []
@@ -244,7 +258,7 @@ function cmdCheck () {
   else ok.push('§0 has all five subsections')
   if (!hasNext) problems.push('§0 has no next steps (must be written before switching)')
 
-  const indexPath = resolveIndexPath(root)
+  const indexPath = resolveIndexPath(root, rules)
   const ident = readIndexSession(indexPath, sceneName)
   const cfg = readConfigSession(sceneName, ident?.id)
   const sig = readSignature(body)
@@ -303,7 +317,7 @@ function cmdCheck () {
   console.log('')
   console.log('  Scene check: ')
   try {
-    const out = execFileSync('node', [path.join(HERE, 'scene-memory.mjs'),
+    const out = execFileSync('node', [sceneMemoryTool(),
       'check', '--scene', sceneName, '--root', root], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     console.log(out.split('\n').map((l) => '    ' + l).join('\n'))
     ok.push('check passes')

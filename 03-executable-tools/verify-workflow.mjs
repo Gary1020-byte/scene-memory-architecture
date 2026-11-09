@@ -16,7 +16,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { loadRules, parseYaml, findWorkflowFiles } from './workbench.mjs'
+import { loadRules, parseYaml, findWorkflowFiles, getArgAny } from './workbench.mjs'
 
 /* ───────────────────────── single source of truth for the rules ───────────────────────── */
 
@@ -129,8 +129,9 @@ const getArg = (name) => {
   const i = args.indexOf(name)
   return i >= 0 ? args[i + 1] : null
 }
+const getArgA = (n) => getArgAny(process.argv.slice(2), n)
 const root = getArg('--root')
-const fileArg = getArg('--file')
+const fileArg = getArgA('--file')
 
 let files = []
 if (fileArg && (fileArg.includes('/') || /\.ya?ml$/i.test(fileArg))) {

@@ -16,13 +16,14 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { loadRules, parseSections, readText, exists } from './workbench.mjs'
+import { loadRules, parseSections, readText, exists, getArgAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 
 const root = getArg('--root')
-const dispatchPath = getArg('--dispatch')
+const dispatchPath = getArgA('--dispatch')
 
 if (!dispatchPath) {
   console.error('Usage: node verify-dispatch.mjs --root <workbench-root> --dispatch <dispatch-file>')

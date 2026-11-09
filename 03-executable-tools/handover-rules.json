@@ -84,5 +84,6 @@
   "sessionSwitchFreshnessHours": 2,
   "archivedSessionPrefix": "Archived · ",
   "engineStateFile": "engine-state.json",
-  "engineStateArchivedField": "archived-sessions"
+  "engineStateArchivedField": "archived-sessions",
+  "sec0Heading": "## §0 Current Handover"
 }

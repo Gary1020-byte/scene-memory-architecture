@@ -40,12 +40,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  loadRules, resolveMemoryRoot, readText, writeText, exists, now, today,
-} from './workbench.mjs'
+  loadRules, resolveMemoryRoot, readText, writeText, exists, now, today, getArgAny } from './workbench.mjs'
 
 const args = process.argv.slice(2)
 const cmd = args[0]
 const getArg = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null }
+const getArgA = (n) => getArgAny(args, n)
 const hasArg = (n) => args.includes(n)
 
 const root = getArg('--root')
@@ -54,7 +54,7 @@ if (!root) {
   process.exit(2)
 }
 const rules = loadRules(root)
-const memRoot = resolveMemoryRoot(root)
+const memRoot = resolveMemoryRoot(root, rules)
 
 /* The session file layer lives at the workbench root (cross-scene); it does not follow the scene */
 function archiveRoot () {
@@ -192,9 +192,9 @@ function buildIndex () {
 /* ───────────────────────── commands ───────────────────────── */
 
 function cmdExtract () {
-  const exportFile = getArg('--engine-export')
-  const sceneName = getArg('--scene')
-  const sid = getArg('--session')
+  const exportFile = getArgA('--engine-export')
+  const sceneName = getArgA('--scene')
+  const sid = getArgA('--session')
   if (!exportFile || !exists(exportFile)) {
     console.error('✗ Need --engine-export <file> (the session JSON exported by the engine side)')
     return 2
@@ -310,8 +310,8 @@ function cmdList () {
     return 1
   }
   const body = readText(indexPath())
-  const sceneFilter = getArg('--scene')
-  const kw = getArg('--keyword')
+  const sceneFilter = getArgA('--scene')
+  const kw = getArgA('--keyword')
   let shown = 0
   for (const line of body.split(/\r?\n/)) {
     if (!line.startsWith('| ') || line.startsWith('|---') || line.includes('sceneId |')) continue
