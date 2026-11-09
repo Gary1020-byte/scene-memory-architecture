@@ -1,6 +1,6 @@
 # 00 · Core Mechanisms
 
-> These six pieces are the genuinely hard part of the whole architecture, and the part that decides whether it is a mess three months from now.
+> These ten pieces are the genuinely hard part of the whole architecture, and the part that decides whether it is a mess three months from now.
 > Every other section is an expansion of them.
 
 | Piece | One line | What you get |
@@ -11,6 +11,10 @@
 | [4 · Dispatch and Receipt](4-dispatch-and-receipt.md) | How work goes out and how the accumulation comes back | The dispatch four-part set, **the receipt three-part set**, the two channels, the orchestrator's boundary |
 | [5 · Workflow](5-workflow.md) ★ | How scenes are strung into one line | The workflow definition, **gates**, the execution lifecycle, where the execution state lives |
 | [6 · The Division of Labour of Two Memory Systems](6-two-memory-systems.md) | The difference between a ledger and a wiki | Scene memory vs semantic memory, how to combine them, how to cure contamination |
+| [7 · Dispatch and Recovery Interface](7-dispatch-and-recovery-interface.md) | The contract between this repo and the engine | What the engine calls, what the repo guarantees, the engine state file |
+| [8 · Cross-Scene Dispatch](8-cross-scene-dispatch.md) ★ | How one scene hands work to another | The mailbox, the routing table, the hand-off protocol |
+| [9 · Scene Granularity and Routing Hierarchy](9-scene-granularity-and-routing.md) | What breaks first when scenes multiply | **The token myth debunked**, the three real bottlenecks, the "memoryless scene" type, nested vs sibling |
+| [10 · Plan: Building a "Smaller Scene"](10-capability-scene-plan.md) | A worked plan for the missing type | Type design, the three tool changes, ten rollback-able steps, risks and stop conditions |
 
 ---
 
