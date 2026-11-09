@@ -35,7 +35,7 @@ const sceneId = getArg('--id')
 const sceneName = getArg('--name')
 const dutiesArg = getArg('--duties')
 const dirName = getArg('--dir')
-const specFile = getArg('--spec')
+const specFile = getArg('--spec') || getArg('--規格')
 
 if (!root) {
   console.error('Usage: node add-scene.mjs --root <workbench-root> --id <scene-id> --name <scene-name> [--duties "a;b;c"] [--dir <dir-name>]')
@@ -306,9 +306,11 @@ if (specFile) {
 
 for (const s of specs) {
   const id = s.id
-  const name = s.name
-  const dir = s.dir || name
-  const duties = (s.duties || []).length ? s.duties : [
+  // ★ A spec file may use either the English keys or the legacy Chinese ones.
+  const name = s.name || s['名']
+  const dir = s.dir || s['目錄'] || name
+  const specDuties = s.duties || s['職責'] || []
+  const duties = specDuties.length ? specDuties : [
     `Owns: the responsibilities of scene ${name} (make this one concrete sentence)`,
     'Does not touch: never edits another scene\'s memory (if you find an error, dispatch a notice instead).',
     'In one line: ',

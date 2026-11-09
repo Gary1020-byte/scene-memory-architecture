@@ -309,7 +309,7 @@ function readIdentity (indexPath, root) {
 
 function buildMemoryFile (rules, name) {
   const subs = rules.sec0Subsections.map((s, i) => {
-    if (i === 0) return s + '\n- (written by the tool at handover time: the old version is archived in `Archive/<file-name>`)'
+    if (i === 0) return s + '\n- (written by the tool at handover time: the old version is archived in `archive/<file-name>`)'
     if (i === 1) return s + '\n| Project | Memory file | Status | Next step |\n|---|---|---|---|\n| (none) | — | — | — |'
     if (i === 2) return s + '\n- (what changed this round, ≤3 lines)'
     if (i === 3) return s + '\n- (written for the next person)'
@@ -657,7 +657,7 @@ function cmdCheck (root, memRoot, rules, name) {
       const next = rest.indexOf('\n## ', 5)
       const sec = rest.slice(0, next > 0 ? next : rest.length)
       const n = (sec.match(/^- /gm) || []).length
-      if (n < rules.dutyMinItems) problems.push('Core responsibilities has only ' + n + ' items (at least ' + rules.dutyMinItems + ')')
+      if (n < rules.dutyMinItems) problems.push('Core responsibilities has only ' + n + ' items (at least ' + rules.dutyMinItems + ' items)')
       else ok.push('core responsibilities ' + n + ' ')
     }
   }

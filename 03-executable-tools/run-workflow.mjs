@@ -576,9 +576,10 @@ function cmdRun () {
     try {
       out = execFileSync(process.execPath, [
         dispatchTool, '送',
-        '--file', produced.dispatchPath,
-        '--reply-output', receiptOut,
-        '--recipient', step['scene'],
+        // ★ The flags of the external dispatch tool stay Chinese —— that is the real machine's CLI.
+        '--檔', produced.dispatchPath,
+        '--回覆輸出', receiptOut,
+        '--收件', step['scene'],
         '--等場景秒數', String(maxWaitSec),
       ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
       rc = 0
