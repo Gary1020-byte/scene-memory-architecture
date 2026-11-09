@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 /**
- * 場景戊 —— 把「標準場景」一次建好
+ * Scene Builder —— create a "standard scene" in one shot
  *
- * 用法：
- *   node add-scene.mjs --root <工作台根> --id <場景id> --name <場景名> [--duties "a;b;c"] [--目錄 <目錄名>]
- *   node add-scene.mjs --root <工作台根> --規格 <規格檔.json>   # 批次/從檔案
+ * Usage:
+ *   node add-scene.mjs --root <workbench-root> --id <scene-id> --name <scene-name> [--duties "a;b;c"] [--dir <dir-name>]
+ *   node add-scene.mjs --root <workbench-root> --spec <spec-file.json>   # batch / from a file
  *
- * 退出碼：0 = 建成；1 = 有問題；2 = 用法錯誤
+ * Exit codes: 0 = created; 1 = something went wrong; 2 = usage error
  *
- * ★ 這支工具做的是「引擎中立的部分」：
- *   建目錄、git init、寫六件套、登記身份索引。
- *   **不碰引擎**——建立常駐會話是引擎端的事（DSH：工具/建會話.sh）。
- *   引擎端做完後回填 sessionId 到兩處，再跑 stamp + check。
+ * ★ What this tool does — the "engine-neutral part":
+ *   create the directory, git init, write the six-piece set, register the identity index.
+ *   **It does not touch the engine** — creating the resident session is the engine's job
+ *   (DSH: 工具/建會話.sh). After the engine side is done, fill the sessionId back into
+ *   both places, then run stamp + check.
  *
- * ★ 為什麼要有這支工具：
- *   新增場景的失敗模式全是「漏了某一步但症狀不明顯」
- *   （忘了 git init ⇒ 專屬技能消失但看起來像場景變笨；
- *     sessionId 只填一處 ⇒ check 全紅但看不出哪裡錯）。
- *   工具把可機械化的步驟自動化，剩下的交給引擎端與人。
+ * ★ Why this tool exists:
+ *   The failure modes of adding a scene are all "missed one step but the symptom is subtle"
+ *   (forgot git init ⇒ the dedicated skill disappears but the scene just looks dumber;
+ *   sessionId filled in only one place ⇒ check is all red but you cannot see what is wrong).
+ *   The tool automates the mechanical steps; the rest belongs to the engine side and to people.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -37,7 +38,7 @@ const dirName = getArg('--dir')
 const specFile = getArg('--spec')
 
 if (!root) {
-  console.error('用法：node add-scene.mjs --root <工作台根> --id <場景id> --name <場景名> [--duties "a;b;c"] [--目錄 <目錄名>]')
+  console.error('Usage: node add-scene.mjs --root <workbench-root> --id <scene-id> --name <scene-name> [--duties "a;b;c"] [--dir <dir-name>]')
   process.exit(2)
 }
 
@@ -45,168 +46,168 @@ const rules = loadRules(root)
 const memRoot = resolveMemoryRoot(root)
 const indexPath = resolveIndexPath(root)
 
-/* ───────────────────────── 模板 ───────────────────────── */
+/* ───────────────────────── templates ───────────────────────── */
 
-function tpl定位卡 (id, name, dir, panelRel) {
-  return `# ${name} · 定位卡
+function tplLocatorCard (id, name, dir, panelRel) {
+  return `# ${name} · Locator Card
 
-- 場景 id：\`${id}\`
-- 場景名：${name}
-- 面板：\`${panelRel}\`
-- 記憶目錄：\`${rules.sceneRootDir}/${dir}/\`
-- 專屬技能：\`${id}\`（\`${rules.sceneRootDir}/${dir}/${rules.skillDir}/${id}/${rules.skillFile}\`）
-- 定位卡版本：1
+- Scene ID: \`${id}\`
+- Scene Name: ${name}
+- Panel: \`${panelRel}\`
+- Memory Directory: ${rules.sceneRootDir}/${dir}/
+- Dedicated Skill: \`${id}\` (\`${rules.sceneRootDir}/${dir}/${rules.skillDir}/${id}/${rules.skillFile}\`)
+- Locator Card Version: 1
 `
 }
 
-function tpl憲法 (id, name) {
-  return `# scene憲法 · ${name}（\`${id}\`）
+function tplConstitution (id, name) {
+  return `# Scene Constitution · ${name} (\`${id}\`)
 
-> 本文件是本場景的「憲法層」，由引擎的 \`agent-instructions\` 注入到本場景會話的上下文里。
-> 作用域：本目錄是獨立 git 倉庫 ⇒ 只有 cwd 落在本目錄樹內的會話才吃得到這份憲法。
+> This file is the "constitution layer" of this scene; it is injected into this scene's session context by the engine's \`agent-instructions\`.
+> Scope: this directory is an independent git repository ⇒ only sessions whose cwd falls inside this directory tree get this constitution.
 
-## 我是誰
+## Who I Am
 
-- 場景 id：\`${id}\` ｜ 場景名：${name}
-- 定位卡：\`./${rules.locatorFile}\`（先讀它）
-- 專屬技能：\`${id}\`（只在本場景倉庫內的會話可見）
-- 記憶真源：\`./${rules.memoryFile}\`（**唯一真源**，不是聊天記錄）
+- Scene id: \`${id}\` ｜ Scene name: ${name}
+- Locator card: \`./${rules.locatorFile}\` (read it first)
+- Dedicated skill: \`${id}\` (visible only to sessions inside this scene's repository)
+- Source of truth for memory: \`./${rules.memoryFile}\` (**the only source of truth**, not the chat log)
 
-## 職責邊界（劃死，別越界）
+## Responsibility Boundary (draw it hard, do not cross it)
 
-- **負責**：見定位卡與 \`./${rules.memoryFile}\` 的「核心職責」。
-- **不碰**：別的場景的記憶目錄。發現別人寫錯 ⇒ **只能發請求，不許代改**。
-- 只寫自己的 \`./${rules.memoryFile}\`、\`./${rules.projectDir}/\`、\`./${rules.archiveDir}/\`。
-- 不寄信／收信／Gmail・IMAP 存取（那是郵件處理場景）
-- 不發布／不公開到外部服務（那是產品發布場景）
-- 不刪檔、不代改別的場景的記憶（發現寫錯 → 派單或留言提醒）
-- 不動 Docker／containerd／fstab 或刪檔（要先報計畫並取得使用者同意）
+- **Responsible for**: see the locator card and the "Core Responsibilities" in \`./${rules.memoryFile}\`.
+- **Not touching**: other scenes' memory directories. Finding someone else's mistake ⇒ **you may only send a request, you may never edit it for them**.
+- Write only your own \`./${rules.memoryFile}\`, \`./${rules.projectDir}/\`, \`./${rules.archiveDir}/\`.
+- No mail sending / receiving / Gmail・IMAP access (that is the mail-handling scene)
+- No publishing / exposing anything to external services (that is the product-release scene)
+- No deleting files, no editing another scene's memory (if you find a mistake → dispatch a notice or leave a message)
+- No touching Docker／containerd／fstab and no deleting files (report a plan and get the user's consent first)
 
-## 歸屬檢查（動手前必做）
+## Ownership Check (do this before touching anything)
 
-1. **先判這活歸誰**：\`node <工作台根>/工具/派單.mjs 路由 --要 "<one line>"\`。
-   - 命中 → 那是正主。**本場景只做自己那份，其餘派單給它**，等回執再往下走。
-   - 退出碼 3（機械命中不了）→ 讀該場景 \`AGENTS.md\` 的職責段；仍不確定 → 問使用者。
-2. **本場景職責外的活，一律派單，不得自己動手。**
-3. **「本機能直接跑通」≠「該由我跑」。** 摸到鑰匙（帳密／token／API key／憑證檔）先停下來，確認歸屬再動。
-4. **派了單就不要自己做那份。** 派單＝移交，不是請求人幫忙；等回執回來才算收工。
+1. **Decide who owns this job first**: \`node <workbench-root>/工具/派單.mjs 路由 --要 "<one line>"\`.
+   - Hit ⇒ that is the right owner. **This scene only does its own share, the rest is dispatched to it**, then wait for the receipt before moving on.
+   - Exit code 3 (no mechanical hit) → read the responsibilities section of that scene's \`AGENTS.md\`; still unsure → ask the user.
+2. **Any job outside this scene's responsibilities is dispatched, never done here.**
+3. **"This machine can run it" ≠ "this scene should run it".** If you find a key (password／token／API key／credential file), stop and confirm the ownership first.
+4. **Once dispatched, do not do that share yourself.** A dispatch is a handover, not a request for help; the job is done only when the receipt comes back.
 
-## 記憶規則（最重要的四條）
+## Memory Rules (the four most important ones)
 
-1. **開場第一件事**：讀 \`./${rules.memoryFile}\` 的 \`## §0 Current Handover\`。
-2. **§〇 ≤ 4 KB**，覆蓋寫；主文件 ≤ 25 KB；細節沉到 \`## §5 決策與坑\`（只追加）。
-3. **寫回判據**：只記結論，不記過程；一次寫回 ≤ 10 行 / ≤ 2 KB。
-4. **換會話前**：先寫交接 → 跑 \`scene-memory.mjs check --scene ${name}\`，**不過不許換**。
+1. **The very first thing at the start of a session**: read the \`## §0 Current Handover\` of \`./${rules.memoryFile}\`.
+2. **§0 ≤ 4 KB**, written by overwriting in place; main file ≤ 25 KB; details sink into \`## §5 Decisions and Pitfalls\` (append only).
+3. **Write-back criterion**: record conclusions, not process; each write-back ≤ 10 lines / ≤ 2 KB.
+4. **Before switching sessions**: write the handover first → run \`scene-memory.mjs check --scene ${name}\`, **if it does not pass you may not switch**.
 
-## 換會話協議（四步，第 ③ 步不能省）
+## Session Switch Protocol (four steps, step ③ cannot be skipped)
 
-1. 覆蓋寫 \`§〇 當前handover\`
-2. 新建會話，舊會話歸檔
-3. **同步三處**：場景 json 的 \`sessionId\` / 身份索引表的會話 id 欄 / \`§〇\` 交接署名
-4. 自檢：\`node <工作台根>/tool/scene-memory.mjs check --scene ${name}\`
+1. Overwrite \`§0 Current Handover\`
+2. Create the new session, archive the old session
+3. **Sync three places**: the scene json's \`sessionId\` / the session id column of the identity index table / the \`§0\` handover signature
+4. Self-check: \`node <workbench-root>/工具/scene-memory.mjs check --scene ${name}\`
 
-## 跨場景
+## Cross-Scene
 
-- 只能發**通知 / 派單 / 回執**；⛔ 不許改對方的記憶。
-- 派單四件套：**做什麼 · 判據 · 落盤位置 · 回執方式**；**一次派單 = 一條回執**。
-- 對方不回 ⇒ 算「未回執」，別當已經幹完。
+- You may only send **notifications / dispatches / receipts**; ⛔ you may never modify the other side's memory.
+- The dispatch four-part contract: **What · Criteria · Output Location · Receipt Format**; **one dispatch = one receipt**.
+- No reply from the other side ⇒ it counts as "not receipted"; do not treat it as already done.
 
-## 工具
+## Tools
 
 \`\`\`bash
-node <工作台根>/工具/scene-memory.mjs list                    # 一覽所有場景缺什麼
-node <工作台根>/工具/scene-memory.mjs check --scene ${name}    # 自檢
-node <工作台根>/工具/scene-memory.mjs 交接 --scene ${name}    # 歸檔舊版 + 補 §₀
+node <workbench-root>/工具/scene-memory.mjs list                    # list what every scene is missing
+node <workbench-root>/工具/scene-memory.mjs check --scene ${name}    # self-check
+node <workbench-root>/工具/scene-memory.mjs handover --scene ${name}    # archive the old version + fill in §0
 \`\`\`
 `
 }
 
-function tpl技能 (id, name, absDir) {
+function tplSkill (id, name, absDir) {
   return `---
 name: ${id}
-description: 【場景：${name}】${name}場景的專屬技能：開場接手本場景記憶、干完把結論寫回場景私有記憶、給別的場景發派單/回執。當會話的工作目錄位於 ${absDir} 時使用。
+description: 【Scene: ${name}】The dedicated skill of the ${name} scene: take over this scene's memory when a session opens, write the conclusions back into the scene private memory when the work is done, send dispatches/receipts to other scenes. Use it when the session's working directory is ${absDir}.
 ---
 
-# ${name} · 場景專屬技能
+# ${name} · Scene Dedicated Skill
 
-1. **接手**：讀 \`./${rules.memoryFile}\` 的 \`## §0 Current Handover\`（≤4 KB，五小節：上次交接 / 當前專案 / 私有記憶變更 / 下一步·卡點 / 全貌）。
-2. **幹活**：只碰本場景的目錄與本場景的記憶；別人的地盤只發請求。
-3. **寫回**：把結論寫回 \`§₀\`（≤10 行/≤2 KB，只記結論不記過程）；細節追加進 \`## §5 決策與坑\`。
-4. **交接**：收工或換會話前跑 \`scene-memory.mjs handover --scene ${name}\`，然後 \`check\` 通過才換。
-5. **跨場景**：動手前先判歸屬（跑 \`派單.mjs 路由\`）；派單要寫清 做什麼·判據·落盤位置·回執方式。
+1. **Take over**: read the \`## §0 Current Handover\` of \`./${rules.memoryFile}\` (≤4 KB, five subsections: Last Handover / Current Projects / Private Memory Changes / Next Steps · Blockers / Full Picture).
+2. **Do the work**: touch only this scene's directory and this scene's memory; other people's territory is request-only.
+3. **Write back**: write the conclusions back into \`§0\` (≤10 lines/≤2 KB, conclusions only, not process); append the details into \`## §5 Decisions and Pitfalls\`.
+4. **Hand over**: before wrapping up or switching sessions run \`scene-memory.mjs handover --scene ${name}\`, then only switch after \`check\` passes.
+5. **Cross-scene**: decide the ownership before acting (run \`派單.mjs 路由\`); the dispatch must state What · Criteria · Output Location · Receipt Format.
 
-> ⚠️ **description 裡的路徑是場景目錄的絕對路徑** —— 那是引擎判斷
-> 「這個技能在不在本場景可見」的依據。
+> ⚠️ **The path in the description must be the absolute path of the scene directory** —— that is what the engine
+> uses to decide "is this skill visible in this scene". A wrong path ⇒ the skill shows up in other scenes too.
 `
 }
 
-function tpl記憶 (name, duties) {
+function tplMemory (name, duties) {
   const dutyLines = duties.map((d) => `- ${d}`).join('\n')
-  return `# ${name} · 場景私有記憶
+  return `# ${name} · Scene Private Memory
 
-> 身份與形態見 \`identity-card.md\` / \`scene-portrait.md\`（工具生成，⛔ 手改）
-> 規矩：這份記憶只有本場景能改寫；別的場景發現錯誤只能提醒。
+> Identity and shape see \`${rules.identityFile}\` / \`${rules.portraitFile}\` (tool-generated, ⛔ hand-editing)
+> The rule: only this scene may rewrite this memory; other scenes may only point out errors.
 
-## §〇 當前交接（≤ 4 KB，新會話先讀這一節）
+## §0 Current Handover (≤ 4 KB, a new session reads this section first)
 
 ${rules.sec0Subsections[0]}
-- （交接時由工具寫入：舊版已歸檔 \`${rules.archiveDir}/<檔名>\`）
+- (the tool writes this at handover time: the old version is archived in \`${rules.archiveDir}/<file-name>\`)
 
 ${rules.sec0Subsections[1]}
-| 專案 | 記憶檔 | 狀態 | 下一步 |
+| Project | Memory file | Status | Next step |
 |---|---|---|---|
-| （暫無） | — | — | — |
+| (none) | — | — | — |
 
 ${rules.sec0Subsections[2]}
-- 
+-
 
 ${rules.sec0Subsections[3]}
-- 下一步：
-- 卡點：
+- Next step:
+- Blockers:
 
 ${rules.sec0Subsections[4]}
-- 專案記憶 0 個 · ${rules.archiveDir} 0 份 · 索引 ${rules.fileIndexFile}
+- Project memory 0 · ${rules.archiveDir} 0 copies · Index ${rules.fileIndexFile}
 
 ## ${rules.dutyHeading.replace('## ', '')}
 
 ${dutyLines}
-- 不碰：不擅自改別的場景的記憶（發現寫錯只能派單提醒）。
-- 一句話：
+- Does not touch: never edits another scene's memory (if you find an error, dispatch a notice instead).
+- In one line:
 
-## §一 我管什麼 / 不管什麼
+## §1 What I Own / What I Don't
 
-- 管：
-- 不管：
+- Own:
+- Don't own:
 
-## §二 幹活入口
+## §2 Where to Start
 
-- 專案記憶：\`${rules.projectDir}/<Project名>.md\`（索引表放上面 §〇 第 2 小節）
-- ${rules.archiveDir}：\`${rules.archiveDir}/\`
-- 索引：\`${rules.fileIndexFile}\`
+- Project memory: \`${rules.projectDir}/<project-name>.md\` (the index table goes in §0 subsection 2 above)
+- ${rules.archiveDir}: \`${rules.archiveDir}/\`
+- Index: \`${rules.fileIndexFile}\`
 
-## §五 決策與坑（只追加）
+## §5 Decisions and Pitfalls (append only)
 
-## 〇-通知
+## 0 - Notifications
 `
 }
 
-function tpl檔案索引 (name) {
+function tplFileIndex (name) {
   const d = today()
-  return `# ${name} · 檔案索引
+  return `# ${name} · File Index
 
-> 狀態四態：\`活 / 常備 / 留檔 / 待清\`
+> Four states: \`active / standing / archived / to-clean\`
 
-| 檔案 / 目錄 | 是什麼 | 狀態 | 複核日期 |
+| File / Directory | What It Is | Status | Last Reviewed |
 |---|---|---|---|
-| \`${rules.memoryFile}\` | 場景私有記憶（人寫：交接/職責/決策/專案索引） | 活 | ${d} |
-| \`${rules.identityFile}\` | 身份卡（工具生成：身分/權限/定位卡指紋） | 活 | ${d} |
-| \`${rules.portraitFile}\` | 場景畫像（工具生成） | 活 | ${d} |
-| \`${rules.projectDir}/\` | 每個專案一份記憶 | 活 | ${d} |
-| \`${rules.archiveDir}/\` | 舊版快照（只進不改） | 留檔 | ${d} |
+| \`${rules.memoryFile}\` | Scene private memory (human-written: handover / duties / decisions / project index) | active | ${d} |
+| \`${rules.identityFile}\` | Identity card (tool-generated: identity / permissions / locator card fingerprint) | active | ${d} |
+| \`${rules.portraitFile}\` | Scene portrait (tool-generated) | active | ${d} |
+| \`${rules.projectDir}/\` | One memory file per project | active | ${d} |
+| \`${rules.archiveDir}/\` | Old snapshots (write-once) | archived | ${d} |
 `
 }
 
-/* ───────────────────────── 主流程 ───────────────────────── */
+/* ───────────────────────── main flow ───────────────────────── */
 
 function createScene ({ id, name, dir, duties }) {
   const sceneDir = path.join(memRoot, dir)
@@ -214,13 +215,13 @@ function createScene ({ id, name, dir, duties }) {
   const panelRel = `scenarios/${id}.json`
   const steps = []
 
-  // ① 目錄
+  // ① directory
   for (const d of ['', path.join(rules.skillDir, id), rules.projectDir, rules.archiveDir]) {
     fs.mkdirSync(path.join(sceneDir, d), { recursive: true })
   }
   steps.push(['Create directory', path.relative(root, sceneDir)])
 
-  // ② git init（邊界）
+  // ② git init (the scene boundary)
   const mark = rules.boundaryMarkerFile
   if (!exists(path.join(sceneDir, mark))) {
     try {
@@ -236,13 +237,13 @@ function createScene ({ id, name, dir, duties }) {
     steps.push(['git init', 'already exists, skipped'])
   }
 
-  // ③ 六件套
+  // ③ the six-piece set
   const files = [
-    [rules.locatorFile, tpl定位卡(id, name, dir, panelRel)],
-    [rules.constitutionFile, tpl憲法(id, name)],
-    [path.join(rules.skillDir, id, rules.skillFile), tpl技能(id, name, absDir)],
-    [rules.memoryFile, tpl記憶(name, duties)],
-    [rules.fileIndexFile, tpl檔案索引(name)]
+    [rules.locatorFile, tplLocatorCard(id, name, dir, panelRel)],
+    [rules.constitutionFile, tplConstitution(id, name)],
+    [path.join(rules.skillDir, id, rules.skillFile), tplSkill(id, name, absDir)],
+    [rules.memoryFile, tplMemory(name, duties)],
+    [rules.fileIndexFile, tplFileIndex(name)]
   ]
   for (const [rel, body] of files) {
     const p = path.join(sceneDir, rel)
@@ -254,9 +255,9 @@ function createScene ({ id, name, dir, duties }) {
     steps.push([rel, 'Create'])
   }
 
-  // ④ 身份索引登記
+  // ④ register in the identity index
   const idx = readText(indexPath)
-  const row = `| \`${id}\` | \`${id}-ai\` | AI·${name} | ${name} | \`（待回填）\` | \`${absDir}/${rules.locatorFile}\` | ${id} |`
+  const row = `| \`${id}\` | \`${id}-ai\` | AI·${name} | ${name} | \`（待回填）\` | \`${absDir}/${rules.locatorFile}\` | \`${id}\` |`
   if (idx.includes(`\`${id}\``)) {
     steps.push(['identity index', 'this line already present, not duplicated'])
   } else {
@@ -265,25 +266,25 @@ function createScene ({ id, name, dir, duties }) {
     let inserted = false
     for (const line of lines) {
       out.push(line)
-      // 插在最後一行表格資料之後（表格行都以 | ` 開頭）
+      // insert after the last table data row (table rows all start with "| `")
       if (!inserted && line.startsWith('| `') && line.includes('|')) {
         out.push(row)
         inserted = true
       }
     }
     if (!inserted) {
-      // 沒有表格就插在檔尾
+      // no table ⇒ append at the end of the file
       out.push('')
       out.push(row)
     }
     writeText(indexPath, out.join('\n'))
-    steps.push(['identity index', `登記 \`${id}\` 一行（sessionId 待回填）`])
+    steps.push(['identity index', 'register a row for `' + id + '` (sessionId to be filled in later)'])
   }
 
   return { steps, sceneDir, absDir }
 }
 
-/* ───────────────────────── 執行 ───────────────────────── */
+/* ───────────────────────── run ───────────────────────── */
 
 const specs = []
 if (specFile) {
@@ -297,34 +298,34 @@ if (specFile) {
   }
   specs.push({
     id: sceneId,
-    名: sceneName,
-    目錄: dirName || sceneName,
-    職責: (dutiesArg || '').split('；').map(s => s.trim()).filter(Boolean),
+    name: sceneName,
+    dir: dirName || sceneName,
+    duties: (dutiesArg || '').split(/[;；]/).map(s => s.trim()).filter(Boolean),
   })
 }
 
 for (const s of specs) {
   const id = s.id
-  const name = s.名 || s.name
-  const dir = s.目錄 || s.dir || name
-  const duties = (s.職責 || s.duties || []).length ? (s.職責 || s.duties) : [
+  const name = s.name
+  const dir = s.dir || name
+  const duties = (s.duties || []).length ? s.duties : [
     `Owns: the responsibilities of scene ${name} (make this one concrete sentence)`,
     'Does not touch: never edits another scene\'s memory (if you find an error, dispatch a notice instead).',
     'In one line: ',
   ]
 
-  console.log(`\n▸ Createscene "${name}」（${id}）`)
+  console.log('\n▸ Create scene "' + name + '" (' + id + ')')
   const res = createScene({ id, name, dir, duties })
   if (res === 1) process.exit(1)
   for (const [what, note] of res.steps) {
     console.log(`  ✓ ${what.padEnd(24)} ${note}`)
   }
-  console.log(`\n  scene目錄：${res.absDir}`)
+  console.log('\n  Scene directory: ' + res.absDir)
 }
 
 console.log('\n═══ Not Done Yet (Engine Side) ═══')
 console.log('① On the engine side, create the scene definition json (use 04-templates/scene-definition-template.json; the name field = the scene directory name)')
-console.log('② Create the resident session (DSH: bash tool/建會話.sh <scene-name>)')
+console.log('② Create the resident session (DSH: bash 工具/建會話.sh <scene-name>)')
 console.log('③ Fill sessionId back into both the scene definition json and the identity index')
 console.log('④ node scene-memory.mjs stamp --scene <scene-name> --root <workbench-root>')
 console.log('⑤ node scene-memory.mjs check --scene <scene-name> --root <workbench-root>   ← must be all green')

@@ -25,7 +25,7 @@
   "sceneConfigFile": "scene-config.json",
   "constitutionFile": "AGENTS.md",
   "skillFile": "SKILL.md",
-  "sceneRootDir": "Scene",
+  "sceneRootDir": "scenes",
   "projectDir": "project-memory",
   "archiveDir": "archive",
   "skillDir": ".dsh/skills",

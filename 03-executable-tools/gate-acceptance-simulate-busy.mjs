@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 /**
- * 守門驗收-造忙碌 —— 讓某個場景 session 處於 running=true（用來測「場景忙會被擋」）
+ * Gate acceptance — simulate a busy scene: put a scene session into running=true
+ * (used to test "a busy scene gets blocked").
  *
- * 用法：
+ * Usage:
  *   node gate-acceptance-simulate-busy.mjs <sessionId> ["instruction for the scene"]
  *
- * ★ 為什麼需要：引擎沒有「忙就拒收」的開關，要驗證「忙 ⇒ 明確拒絕」，
- *   就得真的讓那個場景處於忙碌狀態。這個工具直接對 session 送一個
- *   會佔用一點時間的 prompt（建議 bash sleep），再用 session/list 的
- *   running 旗標確認它真的忙起來了。
+ * ★ Why it is needed: the engine has no "reject while busy" switch, so verifying
+ *   "busy ⇒ explicit rejection" requires really making that scene busy. This tool sends the
+ *   session a prompt that takes a little while (a bash sleep is recommended), then uses the
+ *   running flag of session/list to confirm it really is busy.
  */
 import { execFileSync } from 'node:child_process'
 
 const sid = process.argv[2]
 if (!sid) {
-  console.error('用法：node gate-acceptance-simulate-busy.mjs <sessionId> ["指令"]')
+  console.error('Usage: node gate-acceptance-simulate-busy.mjs <sessionId> ["instruction"]')
   process.exit(2)
 }
-const text = process.argv[3] || '請用 bash 執行 sleep 90，然後回覆「長任務done」。'
+const text = process.argv[3] || 'Please run "sleep 90" with bash, then reply "long task done".'
 
 function findToken () {
   if (process.env.DSH_TOKEN) return process.env.DSH_TOKEN
@@ -26,7 +27,7 @@ function findToken () {
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     const m = [...out.matchAll(/token=([A-Za-z0-9_\-]{16,})/g)]
     if (m.length) return m[m.length - 1][1]
-  } catch { /* 沒 journal */ }
+  } catch { /* no journal */ }
   return ''
 }
 

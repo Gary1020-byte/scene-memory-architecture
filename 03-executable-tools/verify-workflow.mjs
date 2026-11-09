@@ -26,6 +26,7 @@ const RULES = {
   optionalFields: ['output', 'needs', 'needsConfirmation'],
   failureStrategyValues: ['stop-and-wait', 'continue', 'rollback'],
   needsConfirmationValues: [true, false, 'true', 'false'],
+  workflowDir: 'workflows',
 }
 
 /* ───────────────────────── checks ───────────────────────── */
@@ -147,7 +148,7 @@ if (fileArg && (fileArg.includes('/') || /\.ya?ml$/i.test(fileArg))) {
 
 if (!files.length) {
   const rules = loadRules(root)
-  console.log('Cannot find the workflow definition file (check the path: ' + (root || '.') + '/' + rules.workflowDir + '/)')
+  console.log('Cannot find the workflow definition file (check the path: ' + (root || '.') + '/' + (rules.workflowDir || RULES.workflowDir) + '/)')
   process.exit(2)
 }
 

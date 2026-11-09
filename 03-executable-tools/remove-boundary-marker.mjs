@@ -1,4 +1,4 @@
-// 移除場景目錄下的所有邊界標記（.git / .git-marker）—— 反例驗收 V9 用
+// Remove every boundary marker (.git / .git-marker) under a scene directory —— used by the negative acceptance test V9
 import fs from 'node:fs'
 import path from 'node:path'
 

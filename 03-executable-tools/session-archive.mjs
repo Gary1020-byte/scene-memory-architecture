@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 /**
- * session-archive.mjs —— 會話檔案層（聊天全文的歸處）
+ * session-archive.mjs —— the session file layer (where the full chat transcript lives)
  *
- * 用法：
- *   node session-archive.mjs 抽出 --root <工作台根> --會話 <會話id> --scene <場景名> [--引擎端 <匯出檔>]
- *   node session-archive.mjs 索引 --root <工作台根>
- *   node session-archive.mjs 檢查 --root <工作台根>
- *   node session-archive.mjs 列出 --root <工作台根> [--scene <名>] [--關鍵詞 <字>]
+ * Usage:
+ *   node session-archive.mjs extract --root <workbench-root> --session <session-id> --scene <scene-name> [--engine-export <export-file>]
+ *   node session-archive.mjs index   --root <workbench-root>
+ *   node session-archive.mjs check  --root <workbench-root>
+ *   node session-archive.mjs list   --root <workbench-root> [--scene <name>] [--keyword <text>]
  *
- * 退出碼：0 = 通過；1 = 有問題；2 = 用法錯誤
+ * Exit codes: 0 = passed; 1 = something is wrong; 2 = usage error
  *
- * ★ 這支工具做的是「引擎中立的部分」：
- *   把引擎匯出的會話紀錄變成可讀的 markdown 檔 + 一份可檢索的索引。
- *   **引擎怎麼匯出、匯出什麼格式，是引擎端的事**——
- *   本工具只認一種匯出格式（見下），引擎端把會話轉成那個格式即可。
+ * ★ What this tool does — the "engine-neutral part":
+ *   turn the session records exported by the engine into readable markdown files plus a
+ *   searchable index.
+ *   **How the engine exports and what format it exports is the engine's business** ——
+ *   this tool only accepts one export format (see below); the engine side just has to
+ *   convert the session into that format.
  *
- * ★ 匯出格式（引擎中立契約，engine-neutral）：
- *   一個 JSON 檔，結構為
+ * ★ Export format (the engine-neutral contract):
+ *   one JSON file, structured as
  *     {
  *       "sessionId": "session-xxxx",
  *       "sessionName": "scene name",
@@ -27,12 +29,13 @@
  *         …
  *       ]
  *     }
- *   角色名可用「user/assistant/tool」或「使用者/助手/工具」，兩種都收。
+ *   The role name may be "user/assistant/tool" or "使用者/助手/工具"; both are accepted.
  *
- * ★ 為什麼要有這一層：
- *   場景記憶只管「結論」，聊天全文是另一回事（上游原版的說法）。
- *   沒有這一層 ⇒ 換掉的舊會話只剩引擎內部的黑盒子，
- *   引擎一改版（換了 log 格式）就整批讀不回來。
+ * ★ Why this layer exists:
+ *   The scene memory only holds "conclusions"; the full chat transcript is a different
+ *   thing (the wording of the original upstream version).
+ *   Without this layer ⇒ a replaced old session is nothing but a black box inside the engine,
+ *   and as soon as the engine changes version (a new log format) the whole batch is unreadable.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -53,7 +56,7 @@ if (!root) {
 const rules = loadRules(root)
 const memRoot = resolveMemoryRoot(root)
 
-/* 會話檔案層住在工作台根（跨場景），不跟著場景走 */
+/* The session file layer lives at the workbench root (cross-scene); it does not follow the scene */
 function archiveRoot () {
   return path.join(root, rules['sessionArchiveDir'] || 'session-archive')
 }
@@ -64,7 +67,7 @@ function sceneDir (name) {
   return path.join(memRoot, name)
 }
 
-/* ───────────────────────── 讀匯出檔 ───────────────────────── */
+/* ───────────────────────── read the export file ───────────────────────── */
 
 function normalizeRole (r) {
   const s = String(r || '').trim().toLowerCase()
@@ -74,7 +77,7 @@ function normalizeRole (r) {
   return 'other'
 }
 
-/** 讀引擎匯出檔。支援單一物件或物件陣列。 */
+/** Read the engine export file. Supports a single object or an array of objects. */
 function readExport (p) {
   const j = JSON.parse(readText(p))
   const arr = Array.isArray(j) ? j : [j]
@@ -82,15 +85,15 @@ function readExport (p) {
     sessionId: String(o['sessionId'] || o.sessionId || o.id || '').trim(),
     sessionName: String(o['sessionName'] || o.sessionName || o.title || '').trim(),
     sceneId: String(o['sceneid'] || o.sceneId || '').trim(),
-    // 場景名優先：目錄名用中文（「場景甲」）比英文 id（「sc-a」）可讀，
-    // 而且引擎端的面板 json 的 name 就是中文。
+    // The scene name comes first: a human-readable directory name ("scene-a") beats an
+    // English id ("sc-a"), and the name in the engine-side panel json is that same name.
     sceneName: String(o['scene name'] || o.sceneName || '').trim(),
     startTime: String(o['Start Time'] || o.startedAt || o.createdAt || '').trim(),
     messages: Array.isArray(o['message'] || o.messages) ? (o['message'] || o.messages) : [],
   }))
 }
 
-/** 抽出單場景會話 → 一個 markdown 檔。回傳檔名。 */
+/** Extract one scene session → one markdown file. Returns the file name. */
 function extractOne (rec, sceneName) {
   const dir = path.join(archiveRoot(), sceneName)
   fs.mkdirSync(dir, { recursive: true })
@@ -101,7 +104,7 @@ function extractOne (rec, sceneName) {
   const lines = []
   lines.push('# Session Archive · ' + (rec.sessionName || sceneName))
   lines.push('')
-  lines.push('> 這是**聊天全文**，不是結論。結論在場景的記憶檔裡（`場景/<名>/' + rules.memoryFile + '`）。')
+  lines.push('> This is the **full chat transcript**, not the conclusions. The conclusions live in the scene memory file (`scenes/<name>/' + rules.memoryFile + '`).')
   lines.push('> ⛔ Do not copy the body text from here into the memory file — those are two different things.')
   lines.push('')
   lines.push('| Field | Value |')
@@ -129,7 +132,7 @@ function extractOne (rec, sceneName) {
   return { fname, bytes: Buffer.byteLength(body), count: rec.messages.length, dir }
 }
 
-/* ───────────────────────── 索引 ───────────────────────── */
+/* ───────────────────────── index ───────────────────────── */
 
 function buildIndex () {
   const rootDir = archiveRoot()
@@ -143,12 +146,12 @@ function buildIndex () {
         const full = path.join(dir, f)
         const body = readText(full)
         const pick = (k) => {
-          // ★ 兩個跳脫都不能少：`\|` 是跳脫直線，`\$` 是跳脫結尾錨點。
-          //   少了 `\$`，`$` 會被當成字面 dollar ⇒ 永遠匹配不到任何一列。
+          // ★ Neither escape may be missing: `\|` escapes the pipe, `\$` escapes the end anchor.
+          //   Without `\$`, the `$` is taken as a literal dollar ⇒ it never matches any row.
           const m = new RegExp('^\\| ' + k + ' \\| (.*?) \\|$', 'm').exec(body)
           return m ? m[1].replace(/`/g, '').trim() : ''
         }
-        // 場景欄優先取檔案裡的「場景」列；沒有就退回目錄名
+        // The scene column prefers the "Scene" row inside the file; without it, fall back to the directory name
         const sceneCell = pick('Scene') || sceneName
         rows.push({
           Scene: sceneCell,
@@ -186,7 +189,7 @@ function buildIndex () {
   return rows
 }
 
-/* ───────────────────────── 場景甲 ───────────────────────── */
+/* ───────────────────────── commands ───────────────────────── */
 
 function cmdExtract () {
   const exportFile = getArg('--engine-export')
@@ -245,8 +248,8 @@ function cmdCheck () {
     problems.push('Missing index: ' + path.relative(root, idx) + ' (run node session-archive.mjs index)')
   } else {
     ok.push('index exists')
-    // ★ 檢查不得改資料 —— 所以這裡「讀索引」，不重建索引。
-    //   （重建會把被破壞的索引覆蓋掉，檢查就永遠查不出問題。）
+    // ★ The check must not modify data —— so it "reads the index" here, it does not rebuild it.
+    //   (Rebuilding would overwrite the broken index, and the check would never find the problem.)
     const body = readText(idx)
     let rows = 0
     for (const line of body.split(/\r?\n/)) {
@@ -261,7 +264,7 @@ function cmdCheck () {
     ok.push('index ' + rows + ' rows')
   }
 
-  // 每個場景的歸檔/ 與 會話檔案/ 都要存在
+  // Every scene must have both the archive/ directory and the session files/ directory
   if (exists(memRoot)) {
     for (const s of fs.readdirSync(memRoot).sort()) {
       const d = path.join(memRoot, s)
@@ -272,7 +275,7 @@ function cmdCheck () {
     }
   }
 
-  // 紅線：單檔大小
+  // Red line: size of a single file
   const max = rules['sessionFileMaxBytes'] || 524288
   const keep = rules['sessionArchiveKeepCount'] || 20
   let count = 0
@@ -285,7 +288,7 @@ function cmdCheck () {
       const sz = fs.statSync(path.join(sd, f)).size
       if (sz > max) warns.push('Session archive file over hard limit: ' + path.relative(root, path.join(sd, f)) + ' (' + sz + ' B > ' + max + ' B)')
     }
-    if (files.length > keep) warns.push('scene "' + s + '" has ' + files.length + ' copies會話檔案，超過保留份數 ' + keep + ' (the old one should be cleaned)')
+    if (files.length > keep) warns.push('scene "' + s + '" has ' + files.length + ' session files, more than the keep count ' + keep + ' (the old ones should be cleaned)')
   }
   ok.push('Session archive total ' + count + ' copies')
 
@@ -322,7 +325,7 @@ function cmdList () {
 }
 
 const cmds = { extract: cmdExtract, index: cmdIndex, check: cmdCheck, list: cmdList,
-               抽出: cmdExtract, 索引: cmdIndex, 檢查: cmdCheck, 列出: cmdList }
+               extract: cmdExtract, index: cmdIndex, check: cmdCheck, list: cmdList }
 if (!cmds[cmd]) {
   console.error('Unknown command: ' + (cmd || ' (not given)'))
   console.error('Available: ' + Object.keys(cmds).join(' / '))

@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 /**
- * scene-memory.mjs —— 場景記憶校驗工具
+ * scene-memory.mjs —— the scene memory validation tool
  *
- * 五個命令：
- *   list                    一覽：每個場景缺什麼
- *   init   --scene <名>      建目錄骨架 + 三份文件（已存在不覆蓋）
- *   stamp  --scene <名>      重生成 身份卡 + 場景畫像
- *   交接   --scene <名>      歸檔舊版 + 補 §₀ 小節 + stamp + 登記索引
- *   check  --scene <名>      ★ 全檢：結構/指紋/§〇/專案/歸檔（--all 全場景）
+ * Five commands:
+ *   list                    overview: what every scene is missing
+ *   init   --scene <name>    create the directory skeleton + three files (never overwrites)
+ *   stamp  --scene <name>    regenerate the identity card + scene portrait
+ *   handover --scene <name>  archive the old version + fill the §0 subsections + stamp + register in the index
+ *   check  --scene <name>    ★ full check: structure / fingerprint / §0 / project / archive (--all for every scene)
  *
- * 設計原則：
- *   ① 規則單一來源 —— 紅線、小節清單、指紋長度都讀 handover-rules.json，不硬編碼。
- *   ② fail-closed —— 結構性錯誤擋住（退出碼 1），品質問題只警告。
- *   ③ 工具不碰資料 —— 工具只生成/檢查，場景記憶的正文永遠由人寫。
+ * Design principles:
+ *   ① Single source of truth for the rules —— the red lines, the subsection list and the fingerprint
+ *      length are all read from handover-rules.json, never hardcoded.
+ *   ② fail-closed —— structural errors block (exit code 1); quality issues only warn.
+ *   ③ The tool does not touch the data —— it only generates and checks; the prose of the scene
+ *      memory is always written by a human.
  *
- * 用法：
+ * Usage:
  *   node scene-memory.mjs list
- *   node scene-memory.mjs check --scene 場景甲
+ *   node scene-memory.mjs check --scene scene-a
  *   node scene-memory.mjs check --all
- *   node scene-memory.mjs check --scene 場景甲 --root <工作台根>
+ *   node scene-memory.mjs check --scene scene-a --root <workbench-root>
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -27,76 +29,76 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-/* ───────────────────────── 規則單一來源 ───────────────────────── */
+/* ───────────────────────── single source of truth for the rules ───────────────────────── */
 
 /**
- * 規則 key 對照表：規則檔用中文 key，程式內部用英文 key。
- * 兩邊都支援 —— 規則檔改名或換語言都不會讓工具讀不到值。
+ * Rule key mapping: the rule file may use Chinese keys, the code uses English keys.
+ * Both are supported —— renaming a rule or switching language never makes the tool lose a value.
  */
 const RULE_KEY_ALIAS = {
-  version: 'version',
-  description: 'description',
-  sec0MaxBytes: 'sec0MaxBytes',
-  mainMaxBytes: 'mainMaxBytes',
-  projectMaxBytes: 'Project記憶紅線位元組',
-  skillMaxBytes: 'skillMaxBytes',
-  mainOverLimitAction: 'mainOverLimitAction',
-  sec0OverLimitAction: 'sec0OverLimitAction',
-  fingerprintLength: 'fingerprintLength',
-  sec0Subsections: 'sec0Subsections',
-  dutyHeading: 'dutyHeading',
-  dutyMinItems: '職責最少 items數',
-  memoryFile: 'memoryFile',
-  identityFile: 'Identity卡檔名',
-  portraitFile: 'scenePortrait檔名',
-  fileIndexFile: 'fileIndexFile',
-  locatorFile: 'locatorFile',
-  sceneConfigFile: 'scene config檔名',
-  constitutionFile: 'scene憲法檔名',
-  skillFile: 'skillFile',
-  sceneRootDir: 'scene根目錄',
-  projectDir: 'Project記憶目錄',
-  archiveDir: 'Archive目錄',
-  skillDir: 'skillDir',
-  indexFile: 'identity index檔名',
-  indexAliasSection: 'identity index別名段落',
-  boundaryMarkerFile: 'Boundary標記檔名',
-  boundaryMarkerAltFile: 'Boundary標記替代檔名',
-  _boundaryMarkerNote: '_Boundary標記description',
-  workflowDir: 'workflow目錄',
-  executionDir: 'executionDir',
-  receiptDir: 'receipt目錄',
-  executionStateFile: '執行status檔名',
-  carryFile: 'carryFile',
-  receiptRequiredSections: 'receipt必要小節',
-  artifactSection: 'Accumulable Artifact小節',
-  diffSetSection: 'diffSetSection',
-  nextHopSection: 'nextHopSection',
-  artifactMinItems: 'Accumulable Artifact最小 items數',
-  accumulationTargetSection: 'accumulationTargetSection',
-  dispatchField_what: 'dispatchField_what',
-  dispatchField_criteria: '派單欄位_criteria',
-  dispatchField_output: '派單欄位_output位置',
-  dispatchField_receipt: '派單欄位_receipt方式',
-  dispatchField_needs: '派單欄位_needs',
-  archiveLayerDir: 'Archive層目錄',
-  sessionArchiveDir: 'sessionArchiveDir',
-  sessionArchiveIndexFile: 'sessionArchiveIndexFile',
-  sessionArchiveIndexFields: 'sessionArchiveIndexFields',
-  sessionFileMaxBytes: 'sessionFileMaxBytes',
-  sessionArchiveKeepCount: 'sessionArchiveKeepCount',
-  sessionSwitchPreconditions: 'sessionSwitchPreconditions',
-  sessionSwitchSyncCount: 'sessionSwitchSyncCount',
-  sessionSwitchSyncTargets: 'sessionSwitchSyncTargets',
-  sessionSwitchSignatureFormat: 'sessionSwitchSignatureFormat',
-  sessionSwitchFreshnessHours: 'sessionSwitchFreshnessHours',
-  archivedSessionPrefix: '已Archive會話前綴',
-  engineStateFile: '引擎status檔名',
-  engineStateArchivedField: '引擎status已Archive欄位',
-  memoryRootCandidates: 'memoryRootCandidates',
+  version: '版本',
+  description: '說明',
+  sec0MaxBytes: '交接段紅線位元組',
+  mainMaxBytes: '主檔案紅線位元組',
+  projectMaxBytes: '專案記憶紅線位元組',
+  skillMaxBytes: '技能紅線位元組',
+  mainOverLimitAction: '主檔案超標處置',
+  sec0OverLimitAction: '交接段超標處置',
+  fingerprintLength: '指紋長度',
+  sec0Subsections: '交接段小節',
+  dutyHeading: '職責區塊標題',
+  dutyMinItems: '職責最少條數',
+  memoryFile: '記憶檔名',
+  identityFile: '身份卡檔名',
+  portraitFile: '場景畫像檔名',
+  fileIndexFile: '檔案索引檔名',
+  locatorFile: '定位卡檔名',
+  sceneConfigFile: '場景配置檔名',
+  constitutionFile: '場景憲法檔名',
+  skillFile: '技能檔名',
+  sceneRootDir: '場景根目錄',
+  projectDir: '專案記憶目錄',
+  archiveDir: '歸檔目錄',
+  skillDir: '技能目錄',
+  indexFile: '身份索引檔名',
+  indexAliasSection: '身份索引別名段落',
+  boundaryMarkerFile: '邊界標記檔名',
+  boundaryMarkerAltFile: '邊界標記替代檔名',
+  _boundaryMarkerNote: '_邊界標記說明',
+  workflowDir: '工作流目錄',
+  executionDir: '執行層目錄',
+  receiptDir: '回執目錄',
+  executionStateFile: '執行狀態檔名',
+  carryFile: '交接串檔名',
+  receiptRequiredSections: '回執必要小節',
+  artifactSection: '可累積物小節',
+  diffSetSection: '差異集合小節',
+  nextHopSection: '下一棒小節',
+  artifactMinItems: '可累積物最小條數',
+  accumulationTargetSection: '累積落點小節',
+  dispatchField_what: '派單欄位_做什麼',
+  dispatchField_criteria: '派單欄位_判據',
+  dispatchField_output: '派單欄位_落盤位置',
+  dispatchField_receipt: '派單欄位_回執方式',
+  dispatchField_needs: '派單欄位_需要',
+  archiveLayerDir: '歸檔層目錄',
+  sessionArchiveDir: '會話檔案層目錄',
+  sessionArchiveIndexFile: '會話檔案索引檔名',
+  sessionArchiveIndexFields: '會話檔案索引欄位',
+  sessionFileMaxBytes: '會話檔案單檔紅線位元組',
+  sessionArchiveKeepCount: '會話檔案層保留份數',
+  sessionSwitchPreconditions: '換會話前置檢查',
+  sessionSwitchSyncCount: '換會話同步處數',
+  sessionSwitchSyncTargets: '換會話同步處',
+  sessionSwitchSignatureFormat: '換會話署名格式',
+  sessionSwitchFreshnessHours: '換會話新鮮度小時',
+  archivedSessionPrefix: '已歸檔會話前綴',
+  engineStateFile: '引擎狀態檔名',
+  engineStateArchivedField: '引擎狀態已歸檔欄位',
+  memoryRootCandidates: '記憶根候選',
 }
 
-/** 內建預設規則；若工具目錄有handover-rules.json 則以它為準（★ 規則不硬編碼） */
+/** Built-in default rules; a handover-rules.json in the tool directory wins (★ the rules are never hardcoded) */
 const DEFAULT_RULES = {
   version: 1,
   sec0MaxBytes: 4096,
@@ -162,13 +164,13 @@ const DEFAULT_RULES = {
   memoryRootCandidates: [],
 }
 
-/** 把中文 key 的規則檔正規化成英文 key（英文 key 優先，中文 key 補齊） */
+/** Normalize a rule file with Chinese keys into English keys (English keys win, Chinese keys fill in) */
 function normalizeRules (raw) {
   const out = { ...raw }
   for (const [en, zh] of Object.entries(RULE_KEY_ALIAS)) {
     if (out[en] === undefined && raw[zh] !== undefined) out[en] = raw[zh]
   }
-  // 中文 key 也保留一份，讓規則檔裡新增的欄位（如邊界標記）能直接被讀到
+  // The Chinese keys are kept as well, so newly added fields in the rule file (such as the boundary marker) are read directly
   for (const [en, zh] of Object.entries(RULE_KEY_ALIAS)) {
     if (out[zh] === undefined && raw[en] !== undefined) out[zh] = raw[en]
   }
@@ -187,13 +189,13 @@ function loadRules (root) {
       const j = JSON.parse(fs.readFileSync(p, 'utf8'))
       return { ...DEFAULT_RULES, ...normalizeRules(j), _source: p }
     } catch (e) {
-      console.error('⚠ Cannot read rules file (' + p + '）：' + e.message + ' ⇒ using built-in defaults')
+      console.error('⚠ Cannot read rules file (' + p + '): ' + e.message + ' ⇒ using built-in defaults')
     }
   }
-  return { ...DEFAULT_RULES, _source: '(內建預設)' }
+  return { ...DEFAULT_RULES, _source: '(built-in default)' }
 }
 
-/* ───────────────────────── 路徑解析 ───────────────────────── */
+/* ───────────────────────── path resolution ───────────────────────── */
 
 const argv = process.argv.slice(2)
 const val = (k) => { const i = argv.indexOf(k); return i >= 0 ? (argv[i + 1] || '') : '' }
@@ -208,9 +210,9 @@ function resolveRoot () {
 }
 
 /**
- * 記憶根候選鏈（★ 統一路徑解析，避免「看板分裂」）
- *   環境變數 → <根>/場景 → <根>/引擎數據/.dsh/場景記憶
- * 取第一個存在且是目錄的。
+ * Memory root candidate chain (★ one path resolution for everything, avoiding a "split dashboard")
+ *   environment variable → <root>/scenes → <root>/engine-data/.dsh/scene-memory
+ * The first one that exists and is a directory wins.
  */
 function resolveMemoryRoot (root) {
   const cands = [
@@ -219,12 +221,12 @@ function resolveMemoryRoot (root) {
     path.join(root, 'engine-data', '.dsh', 'scene-memory'),
   ].filter(Boolean)
   for (const p of cands) {
-    try { if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p } catch { /* 跳過 */ }
+    try { if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p } catch { /* skip */ }
   }
   return cands[1] || path.join(root, 'scenes')
 }
 
-/** 身份索引候選鏈（同樣道理：索引搬位不該讓工具全盲） */
+/** Identity index candidate chain (same reasoning: the index moving must not blind the tool) */
 function resolveIndexPath (root) {
   const cands = [
     path.join(root, 'scenes', '_scene-identity-index.md'),
@@ -233,7 +235,7 @@ function resolveIndexPath (root) {
   return cands.find((p) => fs.existsSync(p)) || cands[0]
 }
 
-/* ───────────────────────── 小工具 ───────────────────────── */
+/* ───────────────────────── small utilities ───────────────────────── */
 
 const sha = (p) => {
   try { return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex') } catch { return '' }
@@ -246,7 +248,7 @@ const stampId = () => now().replace(/[-: ]/g, '').slice(0, 12)
 const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch { return '' } }
 const sizeOf = (p) => { try { return fs.statSync(p).size } catch { return 0 } }
 
-/** §〇 段的位元組數（從 §〇 標題到下一個同級標題） */
+/** Byte size of the §0 section (from the §0 heading to the next heading of the same level) */
 function sec0Range (txt) {
   const mNew = txt.match(/^## §0[^\n]*$/m)
   const mOld = txt.match(/^## (?:〇|§〇)[、 ]?當前交接[^\n]*$/m)
@@ -258,7 +260,7 @@ function sec0Range (txt) {
   return { h, bytes: Buffer.byteLength(txt.slice(h, end)), text: txt.slice(h, end), hasOld: !!mOld, hasNew: !!mNew }
 }
 
-/** 取某個 ### 小節的內容 */
+/** Get the content of a given ### subsection */
 function subsection (txt, head) {
   const i = txt.indexOf(head)
   if (i < 0) return ''
@@ -266,7 +268,7 @@ function subsection (txt, head) {
   return txt.slice(i, e > i ? e : txt.length)
 }
 
-/* ───────────────────────── 身份索引 ───────────────────────── */
+/* ───────────────────────── identity index ───────────────────────── */
 
 function readIdentity (indexPath, root) {
   const map = new Map()
@@ -279,7 +281,7 @@ function readIdentity (indexPath, root) {
     if (c.length < 7) continue
     const id = c[0]
     if (!/^[a-z0-9-]+$/.test(id)) continue
-    // 定位卡欄位可能是：相對於工作台根 / 相對於場景層 / 絕對路徑 —— 統一解析成絕對路徑
+    // The locator card column may be: relative to the workbench root / relative to the scene layer / absolute —— always resolve it to an absolute path
     const cardRaw = (c[5] || '').replace(/^scenarios[\\/]/, '')
     let card = ''
     if (cardRaw) {
@@ -303,54 +305,54 @@ function readIdentity (indexPath, root) {
   return map
 }
 
-/* ───────────────────────── 骨架 ───────────────────────── */
+/* ───────────────────────── skeleton ───────────────────────── */
 
 function buildMemoryFile (rules, name) {
   const subs = rules.sec0Subsections.map((s, i) => {
-    if (i === 0) return s + '\n- （交接時由工具寫入：舊版已歸檔 `Archive/<檔名>`）'
+    if (i === 0) return s + '\n- (written by the tool at handover time: the old version is archived in `Archive/<file-name>`)'
     if (i === 1) return s + '\n| Project | Memory file | Status | Next step |\n|---|---|---|---|\n| (none) | — | — | — |'
     if (i === 2) return s + '\n- (what changed this round, ≤3 lines)'
     if (i === 3) return s + '\n- (written for the next person)'
     return s + '\n- Project memory 0 · Archive 0 · Index _file-index.md\n- Identity card / scene portrait / shared-layer areas are in place\n- Blockers / waiting on: see section 4'
   }).join('\n\n')
 
-  return `# ${name} · 場景私有記憶
+  return `# ${name} · Scene Private Memory
 
-> 身份與形態見 \`${rules.identityFile}\` / \`${rules.portraitFile}\`（工具生成，⛔ 手改）
-> 規矩：這份記憶只有本場景能改寫；別的場景發現錯誤只能提醒。
+> Identity and shape see \`${rules.identityFile}\` / \`${rules.portraitFile}\` (tool-generated, ⛔ hand-editing)
+> The rule: only this scene may rewrite this memory; other scenes may only point out errors.
 
 ## §0 Current Handover (≤${rules.sec0MaxBytes / 1024} KB, a new session reads this section first)
 
 ${subs}
 
-## 核心職責
+## Core Responsibilities
 
-- 負責：（待補 —— 用一句話說清「什麼事找我」）
-- 不碰：（待補 —— 用一句話說清「什麼別找我」）
-- 一句話：（待補 —— 能不能一句話說清這個場景為什麼存在）
+- Responsible for: (to be filled —— one sentence: "what finds me")
+- Not touching: (to be filled —— one sentence: "what does not find me")
+- In one line: (to be filled —— can you say in one sentence why this scene exists)
 
-## §一 我管什麼 / 不管什麼
+## §1 What I Own / What I Don't
 
-- 管：
-- 不管：
+- Own:
+- Don't own:
 
-## §二 幹活入口
+## §2 Where to Start
 
 - Project memory: \`${rules.projectDir}/<project-name>.md\` (the current project index table goes in §0 subsection 2 above)
-- 歸檔：\`${rules.archiveDir}/\`
-- 索引：\`${rules.fileIndexFile}\`
+- Archive: \`${rules.archiveDir}/\`
+- Index: \`${rules.fileIndexFile}\`
 
 ## §5 Decisions and Pitfalls (append only)
 
-## 〇-通知
+## 0 - Notifications
 `
 }
 
 function buildIdentityCard (rules, name, ident, root) {
   const card = ident?.card || ''
   const fp = card ? sha(card).slice(0, rules.fingerprintLength) : ''
-  // ⛔ 產出裡只寫「相對於工作台根」的路徑 —— 公開的模板不該綁死執行機器的絕對路徑
-  const cardShown = card ? relToRoot(card, root) : '(缺)'
+  // ⛔ Only paths relative to the workbench root go into the output —— a public template must not pin the executing machine's absolute paths
+  const cardShown = card ? relToRoot(card, root) : '(missing)'
   return `# ${name} · Identity Card (tool-generated · ⛔ manual edits fail validation)
 
 <!-- Scene Binding BEGIN · generated by scene-memory.mjs -->
@@ -419,7 +421,7 @@ function buildFileIndex (rules, name) {
 `
 }
 
-/* ───────────────────────── 場景甲 ───────────────────────── */
+/* ───────────────────────── scene skeleton ───────────────────────── */
 
 function ensureSkeleton (dir, name, rules) {
   fs.mkdirSync(path.join(dir, rules.archiveDir), { recursive: true })
@@ -463,11 +465,11 @@ function cmdStamp (root, memRoot, rules, name) {
   fs.writeFileSync(path.join(dir, rules.identityFile), buildIdentityCard(rules, name, ident, root), 'utf8')
   fs.writeFileSync(path.join(dir, rules.portraitFile), buildPortrait(rules, name, ident, root), 'utf8')
   console.log('✓ ' + name + ': identity card + scene portrait regenerated' +
-    (ident.card ? '(card fingerprint ' + sha(ident.card).slice(0, 12) + '…）' : ' (locator card not found, fingerprint left empty)'))
+    (ident.card ? '(card fingerprint ' + sha(ident.card).slice(0, 12) + '…)' : ' (locator card not found, fingerprint left empty)'))
   return 0
 }
 
-/** 由場景名稱或 id 找索引條目 */
+/** Find the index entry by scene name or id */
 function findIdentity (indexPath, name, root) {
   const map = readIdentity(indexPath, root)
   for (const v of map.values()) {
@@ -486,19 +488,19 @@ function cmdHandover (root, memRoot, rules, name) {
   ensureSkeleton(dir, name, rules)
   let body = fs.readFileSync(main, 'utf8')
 
-  // ① 舊版快照進歸檔
+  // ① archive the old snapshot
   const ident = findIdentity(resolveIndexPath(root), name, root)
   const sid6 = (ident?.sessionId || '').replace('session-', '').slice(0, 6) || 'nosid'
   const archFile = `${rules.memoryFile.replace(/\.md$/, '')}-${stampId()}-${sid6}.md`
   fs.writeFileSync(path.join(dir, rules.archiveDir, archFile), body, 'utf8')
-  console.log('✓ Old version archived: ' + rules.archiveDir + '/' + archFile + '（' + Buffer.byteLength(body) + ' B）')
+  console.log('✓ Old version archived: ' + rules.archiveDir + '/' + archFile + ' (' + Buffer.byteLength(body) + ' B)')
 
-  // ② 缺的小節才補（不覆蓋已有正文）
+  // ② only fill the missing subsections (never overwrite existing prose)
   const missing = []
   for (const sub of rules.sec0Subsections) {
     if (body.includes(sub)) continue
     const head = sub.replace(/^### /, '')
-    if (sub.includes('1)')) missing.push(sub + '\n- 舊版已歸檔 `' + rules.archiveDir + '/' + archFile + '`\n')
+    if (sub.includes('1)')) missing.push(sub + '\n- The old version is archived in `' + rules.archiveDir + '/' + archFile + '`\n')
     else if (sub.includes('2)')) missing.push(sub + '\n| Project | Memory file | Status | Next step |\n|---|---|---|---|\n| (none) | — | — | — |\n')
     else if (sub.includes('3)')) missing.push(sub + '\n- \n')
     else if (sub.includes('4)')) missing.push(sub + '\n- \n')
@@ -512,34 +514,34 @@ function cmdHandover (root, memRoot, rules, name) {
       const at = lineEnd >= 0 ? lineEnd + 1 : body.length
       body = body.slice(0, at) + '\n' + missing.join('\n') + body.slice(at)
     } else {
-      body = '# ' + name + ' · scene private memory\n\n## §0 Current Handover (≤' + rules.sec0MaxBytes / 1024 + ' KB）\n\n' + missing.join('\n') + '\n' + body
+      body = '# ' + name + ' · scene private memory\n\n## §0 Current Handover (≤' + rules.sec0MaxBytes / 1024 + ' KB)\n\n' + missing.join('\n') + '\n' + body
     }
     fs.writeFileSync(main, body, 'utf8')
   }
   console.log('✓ §0 filled in ' + missing.length + ' subsection(s) (only fills missing ones, never overwrites existing prose)')
 
-  // ③ 登記索引
+  // ③ register in the index
   const fidx = path.join(dir, rules.fileIndexFile)
   if (fs.existsSync(fidx)) {
-    fs.appendFileSync(fidx, `| \`${rules.archiveDir}/${archFile}\` | handover前快照（只進不改） | 留檔 | ${now().slice(0, 10)} |\n`, 'utf8')
+    fs.appendFileSync(fidx, `| \`${rules.archiveDir}/${archFile}\` | Snapshot from before the handover (write-once) | archived | ${now().slice(0, 10)} |\n`, 'utf8')
   }
 
-  // ④ 重蓋卡
+  // ④ restamp the card
   return cmdStamp(root, memRoot, rules, name)
 }
 
 function cmdCheck (root, memRoot, rules, name) {
   const dir = path.join(memRoot, name)
-  const problems = []   // 擋
-  const warns = []      // 只提示
-  const ok = []         // 通過
+  const problems = []   // blocking
+  const warns = []      // hints only
+  const ok = []         // passed
 
   if (!fs.existsSync(dir)) {
-    console.log('\n' + name + ': ✗ no such scene directory (' + dir + '）')
+    console.log('\n' + name + ': ✗ no such scene directory (' + dir + ')')
     return 1
   }
 
-  // 必要檔案與目錄
+  // required files and directories
   for (const f of [rules.memoryFile, rules.identityFile, rules.portraitFile, rules.fileIndexFile]) {
     if (fs.existsSync(path.join(dir, f))) ok.push(f); else problems.push('Missing file ' + f)
   }
@@ -547,10 +549,12 @@ function cmdCheck (root, memRoot, rules, name) {
     if (fs.existsSync(path.join(dir, d))) ok.push(d + '/'); else problems.push('Missing directory ' + d + '/')
   }
 
-  // ★ 第二份記憶檔（孤兒）
-  //   來源實測（2026-11-03）：場景自己寫記憶時寫錯檔名，會多出
-  //   「<場景名>scene-private-memory.md」。兩份會分叉（inode 不同）而且 check 只看真源
-  //   ⇒ 孤兒沒有人管；若是硬連結則內容一致但重複檔名會讓其他工具困惑。
+  // ★ A second memory file (orphan)
+  //   Source: a real measurement (2026-11-03): when a scene writes its own memory and gets
+  //   the file name wrong, an extra "<scene-name>scene-private-memory.md" appears. The two
+  //   drift apart (different inodes) and check only looks at the source of truth
+  //   ⇒ nobody manages the orphan; if it is a hard link the content matches, but the
+  //   duplicated file name confuses the other tools.
   {
     const real = path.join(dir, rules.memoryFile)
     if (fs.existsSync(real)) {
@@ -559,7 +563,7 @@ function cmdCheck (root, memRoot, rules, name) {
         if (f === rules.memoryFile || !f.endsWith('scene-private-memory.md')) continue
         const si = fs.statSync(path.join(dir, f))
         if (si.ino === ri.ino) {
-          problems.push('Scene directory has a second memory file "' + f + '" (a hard link to the source of truth) ⇒ keep only "' + rules.memoryFile + '」')
+          problems.push('Scene directory has a second memory file "' + f + '" (a hard link to the source of truth) ⇒ keep only "' + rules.memoryFile + '"')
         } else {
           problems.push('Scene directory has an orphan memory file "' + f + '" (different inode from the source of truth) ⇒ the two will diverge; move it into archive/')
         }
@@ -567,9 +571,11 @@ function cmdCheck (root, memRoot, rules, name) {
     }
   }
 
-  // ★ 場景邊界（.git 存在性）—— 缺了會靜默降級，專屬技能全部消失
-  //   真實場景用真 .git 目錄；公開倉庫的示範用 .git-marker 說明檔
-  //   （git 不追蹤名為 .git 的檔案，巢狀無 commit 的倉庫又會讓 git add -A 失敗）
+  // ★ The scene boundary (existence of .git) —— without it the degradation is silent and all
+  //   the dedicated skills disappear
+  //   A real scene uses a real .git directory; the demo in the public repo uses a .git-marker
+  //   explanatory file (git does not track a file named .git, and a nested repository without
+  //   commits makes git add -A fail)
   const markName = rules['boundaryMarkerFile'] || '.git'
   const altName = rules['boundaryMarkerAltFile'] || '.git-marker'
   const hasMark = fs.existsSync(path.join(dir, markName))
@@ -580,7 +586,7 @@ function cmdCheck (root, memRoot, rules, name) {
     ok.push((hasMark ? markName : altName) + ' (scene boundary)')
   }
 
-  // 身份索引 + 卡指紋
+  // identity index + card fingerprint
   const indexPath = resolveIndexPath(root)
   if (!fs.existsSync(indexPath)) {
     problems.push('Cannot find identity index: ' + indexPath + ' (the tool does not know the scene ↔ session mapping)')
@@ -589,10 +595,13 @@ function cmdCheck (root, memRoot, rules, name) {
   }
   const ident = findIdentity(indexPath, name, root)
 
-  // ★★ 綁定的會話還活著嗎？
-  //   三處「一致」不代表那條會話還在 —— 面板可能指向一條**已歸檔**的會話。
-  //   症狀跟少同步一處完全一樣（切場景像換了個人），但根因不同 ⇒ 必須分開查。
-  //   引擎狀態由引擎端寫成 <工作台根>/engine-state.json（repo 不認識任何引擎的私有格式）。
+  // ★★ Is the bound session still alive?
+  //   The three places being "consistent" does not mean that session still exists —— the panel
+  //   may point at an **archived** session.
+  //   The symptom is exactly the same as "one sync point missed" (switching scene feels like
+  //   switching people), but the root cause differs ⇒ they must be checked separately.
+  //   The engine writes the engine state as <workbench-root>/engine-state.json (the repo does
+  //   not know any engine-private format).
   {
     const stPath = path.join(root, rules['engineStateFile'] || 'engine-state.json')
     if (fs.existsSync(stPath)) {
@@ -606,7 +615,7 @@ function cmdCheck (root, memRoot, rules, name) {
           ok.push('Bound session is still alive')
         }
       } catch (e) {
-        warns.push('Cannot read engine state file (' + path.basename(stPath) + '）：' + e.message)
+        warns.push('Cannot read engine state file (' + path.basename(stPath) + '): ' + e.message)
       }
     }
   }
@@ -618,7 +627,7 @@ function cmdCheck (root, memRoot, rules, name) {
     const card = fs.readFileSync(cardPath, 'utf8')
     const fp = (card.match(/sha256:([0-9a-f]+)/) || [])[1]
     if (!ident.card) {
-      problems.push('Identity index locator card column is empty (value: ' + (ident.cardRaw || ' (empty)') + '）')
+      problems.push('Identity index locator card column is empty (value: ' + (ident.cardRaw || ' (empty)') + ')')
     } else if (!fs.existsSync(ident.card)) {
       problems.push('Locator card does not exist: ' + ident.card)
     } else if (!fp) {
@@ -630,7 +639,7 @@ function cmdCheck (root, memRoot, rules, name) {
     }
   }
 
-  // 主檔案內容
+  // main file content
   const mainPath = path.join(dir, rules.memoryFile)
   if (!fs.existsSync(mainPath)) {
     console.log('\n' + name + ': ✗ missing ' + rules.memoryFile + ' (run init)')
@@ -638,7 +647,7 @@ function cmdCheck (root, memRoot, rules, name) {
   }
   const main = fs.readFileSync(mainPath, 'utf8')
 
-  // 核心職責
+  // core responsibilities
   {
     const i = main.search(new RegExp('^' + rules.dutyHeading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm'))
     if (i < 0) {
@@ -653,12 +662,12 @@ function cmdCheck (root, memRoot, rules, name) {
     }
   }
 
-  // §₀ 五小節
+  // the five §0 subsections
   for (const sub of rules.sec0Subsections) {
     if (!main.includes(sub)) problems.push('§0 missing subsection ' + sub)
   }
 
-  // §₀ 紅線
+  // the §0 red line
   const s0 = sec0Range(main)
   if (s0.h < 0) {
     problems.push('Missing §0 handover heading (## §0)')
@@ -669,7 +678,7 @@ function cmdCheck (root, memRoot, rules, name) {
     if (s0.hasOld && s0.hasNew) warns.push('Both the old and the new §0 headings are present')
   }
 
-  // 內容告警（只警不擋）
+  // content warnings (warn only, never block)
   {
     const pmDir = path.join(dir, rules.projectDir)
     const pmCount = fs.existsSync(pmDir) ? fs.readdirSync(pmDir).filter((x) => x.endsWith('.md')).length : 0
@@ -678,7 +687,7 @@ function cmdCheck (root, memRoot, rules, name) {
     const seg4 = subsection(main, '### 4) Next Steps / Blockers')
     const body4 = seg4.split(/\r?\n/).filter((l) => /^-\s*\S/.test(l.trim()))
     if (!body4.length) warns.push('Section 4 (next steps / blockers) is empty')
-    // 專案記憶超紅線
+    // project memory over the red line
     if (fs.existsSync(pmDir)) {
       for (const f of fs.readdirSync(pmDir).filter((x) => x.endsWith('.md'))) {
         const b = sizeOf(path.join(pmDir, f))
@@ -687,14 +696,14 @@ function cmdCheck (root, memRoot, rules, name) {
     }
   }
 
-  // 主檔案大小（只警）
+  // main file size (warn only)
   const mainBytes = Buffer.byteLength(main)
   if (mainBytes > rules.mainMaxBytes) {
-    warns.push('Main file ' + (mainBytes / 1024).toFixed(1) + ' KB over ' + (rules.mainMaxBytes / 1024) + ' KB (hard limit — move old content into ' + rules.archiveDir + '/ 並留指針）')
+    warns.push('Main file ' + (mainBytes / 1024).toFixed(1) + ' KB over ' + (rules.mainMaxBytes / 1024) + ' KB (hard limit — move old content into ' + rules.archiveDir + '/ and leave a pointer)')
   }
 
-  console.log('\n' + name + '：' + (problems.length ? '✗ ' + problems.length + '  problem(s)' : '✓ All checks passed') +
-    '（' + ok.length + ' passed' + (warns.length ? ' · ⚠ ' + warns.length + ' warning(s)' : '') + '）')
+  console.log('\n' + name + ': ' + (problems.length ? '✗ ' + problems.length + ' problem(s)' : '✓ All checks passed') +
+    ' (' + ok.length + ' passed' + (warns.length ? ' · ⚠ ' + warns.length + ' warning(s)' : '') + ')')
   problems.forEach((p) => console.log('   ✗ ' + p))
   warns.forEach((p) => console.log('   ⚠ ' + p))
   return problems.length ? 1 : 0
@@ -708,11 +717,11 @@ function cmdList (memRoot, rules) {
   for (const d of dirs.sort()) {
     const has = (f) => fs.existsSync(path.join(memRoot, d, f))
     const flag = (b) => (b ? '✓' : '✗')
-    // 邊界標記：真 .git 或 .git-marker（示範用），任一存在即算有邊界
+    // boundary marker: a real .git or .git-marker (for the demo); either one counts as a boundary
     const markName = rules['boundaryMarkerFile'] || '.git'
     const altName = rules['boundaryMarkerAltFile'] || '.git-marker'
     const hasMark = has(markName) || (altName !== markName && has(altName))
-    const line = '  ' + d + '   記憶' + flag(has(rules.memoryFile)) + ' Identity' + flag(has(rules.identityFile)) +
+    const line = '  ' + d + '   Memory' + flag(has(rules.memoryFile)) + ' Identity' + flag(has(rules.identityFile)) +
       ' Portrait' + flag(has(rules.portraitFile)) + ' Project' + flag(has(rules.projectDir)) +
       ' Archive' + flag(has(rules.archiveDir)) + ' Boundary' + flag(hasMark)
     if (!(has(rules.identityFile) && has(rules.portraitFile))) bad++
@@ -722,7 +731,7 @@ function cmdList (memRoot, rules) {
   return 0
 }
 
-/* ───────────────────────── 入口 ───────────────────────── */
+/* ───────────────────────── entry point ───────────────────────── */
 
 const root = resolveRoot()
 const memRoot = resolveMemoryRoot(root)
@@ -730,25 +739,25 @@ const rules = loadRules(root)
 const cmd = argv[0]
 
 if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
-  console.log(`場景記憶校驗工具 —— 記憶在檔案裡，不在會話裡
+  console.log(`Scene memory validation tool —— the memory lives in the files, not in the chat
 
-用法：
-  node scene-memory.mjs list                    一覽所有場景缺什麼
-  node scene-memory.mjs init    --scene <名>      建立場景骨架（六件套 + 目錄結構）
-  node scene-memory.mjs stamp   --scene <名>      重生成身份卡（含 sha256 指紋）與場景畫像
-  node scene-memory.mjs handover --scene <名>      歸檔舊版 §〇 + 補 §〇 骨架
-  node scene-memory.mjs check   --scene <名>      校驗（fail-closed，不過就擋）
-  node scene-memory.mjs check   --all           校驗所有場景
+Usage:
+  node scene-memory.mjs list                     what every scene is missing
+  node scene-memory.mjs init    --scene <name>   create the scene skeleton (the six-piece set + directory structure)
+  node scene-memory.mjs stamp   --scene <name>   regenerate the identity card (with a sha256 fingerprint) and the scene portrait
+  node scene-memory.mjs handover --scene <name>   archive the old §0 + fill the §0 skeleton
+  node scene-memory.mjs check   --scene <name>   validate (fail-closed: it blocks when it does not pass)
+  node scene-memory.mjs check   --all            validate every scene
 
-通用選項：
-  --root <工作台根>   指定工作台根（預設：工具的上一層目錄）
-  --scene <名> / --scene <名>   場景名（也可直接給路徑）
+Common options:
+  --root <workbench-root>   the workbench root (default: the parent directory of the tool)
+  --scene <name>            the scene name (you may also pass a path directly)
 
-退出碼：
-  0 = 通過　1 = 有項目未通過　2 = 用法錯誤
+Exit codes:
+  0 = passed  1 = something did not pass  2 = usage error
 
-規則來源：handover-rules.json（紅線數字只在那裡定義一次）
-驗收：bash negative-acceptance.sh —— 證明「該失敗時會失敗」`)
+Rules source: handover-rules.json (the red-line numbers are defined there exactly once)
+Acceptance: bash negative-acceptance.sh —— proves "it fails when it should fail"`)
   process.exit(0)
 }
 
@@ -773,8 +782,8 @@ if (cmd === 'check' && has('--all')) {
 }
 
 if (!name) {
-  console.error('用法：node scene-memory.mjs <list|init|stamp|handover|check> --scene <名> [--root <工作台根>]')
-  console.error('      全scenecheck：node scene-memory.mjs check --all')
+  console.error('Usage: node scene-memory.mjs <list|init|stamp|handover|check> --scene <name> [--root <workbench-root>]')
+  console.error('       check every scene: node scene-memory.mjs check --all')
   process.exit(2)
 }
 

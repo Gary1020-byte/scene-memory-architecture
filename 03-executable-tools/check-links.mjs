@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * 連結檢查 —— 驗證所有 markdown 內部連結都指向存在的檔案
- * 用法：node check-links.mjs
+ * Link check —— verifies that all internal markdown links point at existing files.
+ * Usage: node check-links.mjs
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -26,7 +26,7 @@ const files = walk(ROOT)
 for (const f of files) {
   const txt = fs.readFileSync(f, 'utf8')
   const rel = path.relative(ROOT, f)
-  // markdown 連結 [文字](目標)
+  // a markdown link [text](target)
   const re = /\[[^\]]*\]\(([^)]+)\)/g
   let m
   while ((m = re.exec(txt))) {

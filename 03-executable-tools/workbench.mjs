@@ -1,9 +1,10 @@
 /**
- * 共用模組 —— 路徑解析、受限 YAML 解析、規則載入
+ * Shared module —— path resolution, restricted YAML parsing, rule loading
  *
- * ★ 為什麼要抽出來：三支工具（場景記憶 / 工作流校驗 / 工作流執行）
- *   都需要「找工作台根」「讀規則」「解析工作流 YAML」。
- *   各寫一份 = 各錯一次 = 三個版本不一致。這是本 repo 反覆出現的教訓。
+ * ★ Why it is factored out: three tools (scene memory / workflow validation / workflow
+ *   execution) all need "find the workbench root", "read the rules" and "parse the workflow YAML".
+ *   Writing one copy each = one bug each = three inconsistent versions. That is a lesson this
+ *   repo keeps relearning.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -12,69 +13,69 @@ import { fileURLToPath } from 'node:url'
 
 export const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-/* ───────────────────────── 規則單一來源 ───────────────────────── */
+/* ───────────────────────── single source of truth for the rules ───────────────────────── */
 
 const RULE_KEY_ALIAS = {
-  version: 'version',
-  description: 'description',
-  sec0MaxBytes: 'sec0MaxBytes',
-  mainMaxBytes: 'mainMaxBytes',
-  projectMaxBytes: 'Project記憶紅線位元組',
-  skillMaxBytes: 'skillMaxBytes',
-  mainOverLimitAction: 'mainOverLimitAction',
-  sec0OverLimitAction: 'sec0OverLimitAction',
-  fingerprintLength: 'fingerprintLength',
-  sec0Subsections: 'sec0Subsections',
-  dutyHeading: 'dutyHeading',
-  dutyMinItems: '職責最少 items數',
-  memoryFile: 'memoryFile',
-  identityFile: 'Identity卡檔名',
-  portraitFile: 'scenePortrait檔名',
-  fileIndexFile: 'fileIndexFile',
-  locatorFile: 'locatorFile',
-  sceneConfigFile: 'scene config檔名',
-  constitutionFile: 'scene憲法檔名',
-  skillFile: 'skillFile',
-  sceneRootDir: 'scene根目錄',
-  projectDir: 'Project記憶目錄',
-  archiveDir: 'Archive目錄',
-  skillDir: 'skillDir',
-  indexFile: 'identity index檔名',
-  indexAliasSection: 'identity index別名段落',
-  boundaryMarkerFile: 'Boundary標記檔名',
-  boundaryMarkerAltFile: 'Boundary標記替代檔名',
-  _boundaryMarkerNote: '_Boundary標記description',
-  workflowDir: 'workflow目錄',
-  executionDir: 'executionDir',
-  receiptDir: 'receipt目錄',
-  executionStateFile: '執行status檔名',
-  carryFile: 'carryFile',
-  receiptRequiredSections: 'receipt必要小節',
-  artifactSection: 'Accumulable Artifact小節',
-  diffSetSection: 'diffSetSection',
-  nextHopSection: 'nextHopSection',
-  artifactMinItems: 'Accumulable Artifact最小 items數',
-  accumulationTargetSection: 'accumulationTargetSection',
-  dispatchField_what: 'dispatchField_what',
-  dispatchField_criteria: '派單欄位_criteria',
-  dispatchField_output: '派單欄位_output位置',
-  dispatchField_receipt: '派單欄位_receipt方式',
-  dispatchField_needs: '派單欄位_needs',
-  archiveLayerDir: 'Archive層目錄',
-  sessionArchiveDir: 'sessionArchiveDir',
-  sessionArchiveIndexFile: 'sessionArchiveIndexFile',
-  sessionArchiveIndexFields: 'sessionArchiveIndexFields',
-  sessionFileMaxBytes: 'sessionFileMaxBytes',
-  sessionArchiveKeepCount: 'sessionArchiveKeepCount',
-  sessionSwitchPreconditions: 'sessionSwitchPreconditions',
-  sessionSwitchSyncCount: 'sessionSwitchSyncCount',
-  sessionSwitchSyncTargets: 'sessionSwitchSyncTargets',
-  sessionSwitchSignatureFormat: 'sessionSwitchSignatureFormat',
-  sessionSwitchFreshnessHours: 'sessionSwitchFreshnessHours',
-  archivedSessionPrefix: '已Archive會話前綴',
-  engineStateFile: '引擎status檔名',
-  engineStateArchivedField: '引擎status已Archive欄位',
-  memoryRootCandidates: 'memoryRootCandidates',
+  version: '版本',
+  description: '說明',
+  sec0MaxBytes: '交接段紅線位元組',
+  mainMaxBytes: '主檔案紅線位元組',
+  projectMaxBytes: '專案記憶紅線位元組',
+  skillMaxBytes: '技能紅線位元組',
+  mainOverLimitAction: '主檔案超標處置',
+  sec0OverLimitAction: '交接段超標處置',
+  fingerprintLength: '指紋長度',
+  sec0Subsections: '交接段小節',
+  dutyHeading: '職責區塊標題',
+  dutyMinItems: '職責最少條數',
+  memoryFile: '記憶檔名',
+  identityFile: '身份卡檔名',
+  portraitFile: '場景畫像檔名',
+  fileIndexFile: '檔案索引檔名',
+  locatorFile: '定位卡檔名',
+  sceneConfigFile: '場景配置檔名',
+  constitutionFile: '場景憲法檔名',
+  skillFile: '技能檔名',
+  sceneRootDir: '場景根目錄',
+  projectDir: '專案記憶目錄',
+  archiveDir: '歸檔目錄',
+  skillDir: '技能目錄',
+  indexFile: '身份索引檔名',
+  indexAliasSection: '身份索引別名段落',
+  boundaryMarkerFile: '邊界標記檔名',
+  boundaryMarkerAltFile: '邊界標記替代檔名',
+  _boundaryMarkerNote: '_邊界標記說明',
+  workflowDir: '工作流目錄',
+  executionDir: '執行層目錄',
+  receiptDir: '回執目錄',
+  executionStateFile: '執行狀態檔名',
+  carryFile: '交接串檔名',
+  receiptRequiredSections: '回執必要小節',
+  artifactSection: '可累積物小節',
+  diffSetSection: '差異集合小節',
+  nextHopSection: '下一棒小節',
+  artifactMinItems: '可累積物最小條數',
+  accumulationTargetSection: '累積落點小節',
+  dispatchField_what: '派單欄位_做什麼',
+  dispatchField_criteria: '派單欄位_判據',
+  dispatchField_output: '派單欄位_落盤位置',
+  dispatchField_receipt: '派單欄位_回執方式',
+  dispatchField_needs: '派單欄位_需要',
+  archiveLayerDir: '歸檔層目錄',
+  sessionArchiveDir: '會話檔案層目錄',
+  sessionArchiveIndexFile: '會話檔案索引檔名',
+  sessionArchiveIndexFields: '會話檔案索引欄位',
+  sessionFileMaxBytes: '會話檔案單檔紅線位元組',
+  sessionArchiveKeepCount: '會話檔案層保留份數',
+  sessionSwitchPreconditions: '換會話前置檢查',
+  sessionSwitchSyncCount: '換會話同步處數',
+  sessionSwitchSyncTargets: '換會話同步處',
+  sessionSwitchSignatureFormat: '換會話署名格式',
+  sessionSwitchFreshnessHours: '換會話新鮮度小時',
+  archivedSessionPrefix: '已歸檔會話前綴',
+  engineStateFile: '引擎狀態檔名',
+  engineStateArchivedField: '引擎狀態已歸檔欄位',
+  memoryRootCandidates: '記憶根候選',
 }
 
 export const DEFAULT_RULES = {
@@ -148,8 +149,8 @@ export function normalizeRules (raw) {
     if (out[en] === undefined && raw[zh] !== undefined) out[en] = raw[zh]
     if (out[zh] === undefined && raw[en] !== undefined) out[zh] = raw[en]
   }
-  // ★ 有些規則的中文鍵本身就是英文鍵（如「_檔案索引檔名」），
-  //   別名對照表要兩邊都登，否則會讀成 undefined。
+  // ★ Some rules have a Chinese key that is itself an English key (e.g. "_fileIndexFile"),
+  //   so the alias table has to list both sides, otherwise the value reads as undefined.
   for (const zh of Object.values(RULE_KEY_ALIAS)) {
     if (out[zh] === undefined && raw[zh] !== undefined) out[zh] = raw[zh]
   }
@@ -157,10 +158,11 @@ export function normalizeRules (raw) {
 }
 
 /**
- * 載入規則。優先序：
- *   ① 明確指定的規則檔（--rules <路徑>）—— ★ 引擎端用這個帶自己的命名
- *   ② <工作台根>/handover-rules.json
- *   ③ 工具同目錄的handover-rules.json（repo 預設）
+ * Load the rules. Priority:
+ *   ① an explicitly given rules file (--rules <path>) —— ★ the engine side uses this to
+ *     bring its own naming
+ *   ② <workbench-root>/handover-rules.json
+ *   ③ the handover-rules.json next to the tool (the repo default)
  *   ④ 04-templates/handover-rules.json
  */
 export function loadRules (root, explicit) {
@@ -182,11 +184,12 @@ export function loadRules (root, explicit) {
   return { ...DEFAULT_RULES }
 }
 
-/* ───────────────────────── 路徑解析 ───────────────────────── */
+/* ───────────────────────── path resolution ───────────────────────── */
 
 /**
- * 記憶根解析。候選鏈可被規則檔覆寫（引擎端用自己的目錄名與字體）。
- * 佔位符 <根> 會被替換成工作台根。
+ * Memory root resolution. The candidate chain can be overridden by the rules file (the engine
+ * side uses its own directory names and fonts).
+ * The <根> placeholder is replaced with the workbench root.
  */
 export function resolveMemoryRoot (root, rules) {
   const cands = [
@@ -197,7 +200,7 @@ export function resolveMemoryRoot (root, rules) {
     path.join(root, 'engine-data', '.dsh', 'scene-memory'),
   ].filter(Boolean)
   for (const p of cands) {
-    try { if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p } catch { /* 跳過 */ }
+    try { if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return p } catch { /* skip */ }
   }
   return cands[1] || path.join(root, 'scenes')
 }
@@ -234,16 +237,16 @@ export function findWorkflowFiles (root, rules) {
     .map((e) => path.join(dir, e.name))
 }
 
-/* ───────────────────────── 受限 YAML 解析 ───────────────────────── */
+/* ───────────────────────── restricted YAML parsing ───────────────────────── */
 
 /**
- * 只支援本專案需要的子集：
+ * Only the subset this project needs is supported:
  *   key: value
  *   key:
  *   - item
  *   - key: value
  *     key2: value
- * 出現任何無法判定的行就丟錯 —— 寧可報「看不懂」，也不要默默猜錯。
+ * Any line that cannot be decided is an error —— better to say "I cannot read this" than to guess wrong silently.
  */
 export function parseYaml (text) {
   const lines = text.split('\n')
@@ -255,13 +258,13 @@ export function parseYaml (text) {
     const raw = lines[i]
     if (!raw.trim() || raw.trim().startsWith('#')) continue
     if (raw.includes('\t')) {
-      throw new Error(`第 ${i + 1} 行含 tab（本tool只用空格縮排）：${raw.trim()}`)
+      throw new Error(`line ${i + 1} contains a tab (this tool indents with spaces only): ${raw.trim()}`)
     }
     const cur = raw.match(/^(\s*)/)[0].length
     const body = raw.trim()
 
     if (body.startsWith('- ')) {
-      if (!listCtx) throw new Error(`第 ${i + 1} 行是清單項目，但沒有對應的 key：${body}`)
+      if (!listCtx) throw new Error(`line ${i + 1} is a list item but has no matching key: ${body}`)
       const val = body.slice(2).trim()
       const obj = {}
       listCtx.arr.push(obj)
@@ -273,7 +276,7 @@ export function parseYaml (text) {
     }
 
     const m = body.match(/^([^:]+):(.*)$/)
-    if (!m) throw new Error(`第 ${i + 1} 行看不懂：${body}`)
+    if (!m) throw new Error(`line ${i + 1} cannot be parsed: ${body}`)
     const key = m[1].trim()
     const val = m[2].trim()
 
@@ -319,16 +322,18 @@ function parseScalar (v) {
   return v.replace(/^["']|["']$/g, '')
 }
 
-/* ───────────────────────── Markdown 小節解析 ───────────────────────── */
+/* ───────────────────────── markdown section parsing ───────────────────────── */
 
 /**
- * ★ 為什麼用逐行掃描而不是 regex：
- *   regex 抓 markdown 小節在實測中連踩兩個坑：
- *     ① lookahead `\s*$`（m flag）會在標題後的空白行立刻成立 ⇒ 捕獲到空字串
- *     ② lazy + lookahead 會吃掉最後一行
- *   逐行掃描沒有這些歧義。**實跑才發現的缺陷，記在更新清單 v0.3。**
+ * ★ Why line-by-line scanning instead of a regex:
+ *   A regex that grabs markdown sections stepped on two traps in real measurements:
+ *     ① the lookahead `\s*$` (with the m flag) succeeds right at the blank line after the
+ *       heading ⇒ it captures an empty string
+ *     ② lazy + lookahead eats the last line
+ *   Line-by-line scanning has none of these ambiguities. **A defect only found by running it,
+ *   recorded in the update log v0.3.**
  *
- * 回傳：該小節的內容行（已 trim），不含標題本身。
+ * Returns: the content lines of that section (trimmed), without the heading itself.
  */
 export function sectionLines (text, title) {
   const lines = text.split('\n')
@@ -337,7 +342,7 @@ export function sectionLines (text, title) {
   for (const raw of lines) {
     const h = raw.match(/^#{1,6}[ \t]*(.+?)[ \t]*$/)
     if (h) {
-      if (inSec) break                    // 下一個標題 = 本小節結束
+      if (inSec) break                    // the next heading ends this section
       if (h[1].trim() === title) { inSec = true; continue }
       continue
     }
@@ -346,7 +351,7 @@ export function sectionLines (text, title) {
   return out
 }
 
-/** 解析整份 markdown 的所有小節 → { 標題: [內容行] } */
+/** Parse all sections of a whole markdown file → { heading: [content lines] } */
 export function parseSections (text) {
   const sections = {}
   let cur = null
@@ -362,7 +367,7 @@ export function parseSections (text) {
   return sections
 }
 
-/* ───────────────────────── 小工具 ───────────────────────── */
+/* ───────────────────────── small utilities ───────────────────────── */
 
 export function now () { return new Date().toISOString().replace('T', ' ').slice(0, 19) }
 export function today () { return now().slice(0, 10) }

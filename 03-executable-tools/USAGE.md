@@ -1,278 +1,293 @@
-# 校驗工具
+# Validation Tools
 
-> 兩支**可執行**的校驗工具：
-> `scene-memory.mjs`（場景結構）與 `verify-workflow.mjs`（工作流定義）。
-> 兩支都**只讀不寫**（除了 `init`／`stamp`／`交接` 這三個本來就要寫的命令），
-> 而且**不依賴任何 npm 套件**。
+> Two **executable** validation tools:
+> `scene-memory.mjs` (scene structure) and `verify-workflow.mjs` (workflow definitions).
+> Both are **read-only** (except for the three commands that are meant to write: `init` / `stamp` / `handover`),
+> and **neither depends on any npm package**.
 
 ---
 
-## 一、怎麼用
+## 1. How to use
 
 ```bash
 cd 03-executable-tools
 
-# 一覽：每個場景缺什麼
-node scene-memory.mjs list --root <工作台根>
+# Overview: what each scene is missing
+node scene-memory.mjs list --root <workbench-root>
 
-# 建骨架 + 三份文件
-node scene-memory.mjs init --scene 場景甲 --root <工作台根>
+# Build the skeleton + the three documents
+node scene-memory.mjs init --scene scene-a --root <workbench-root>
 
-# 重生成 身份卡 + 場景畫像
-node scene-memory.mjs stamp --scene 場景甲 --root <工作台根>
+# Regenerate the identity card + scene portrait
+node scene-memory.mjs stamp --scene scene-a --root <workbench-root>
 
-# 交接：歸檔舊版 + 補 §₀ + stamp + 登記索引
-node scene-memory.mjs 交接 --scene 場景甲 --root <工作台根>
+# Handover: archive the old version + fill §0 + stamp + register in the index
+node scene-memory.mjs handover --scene scene-a --root <workbench-root>
 
-# ★ 全檢
-node scene-memory.mjs check --scene 場景甲 --root <工作台根>
+# ★ Full check
+node scene-memory.mjs check --scene scene-a --root <workbench-root>
 
-# 全場景檢查
-node scene-memory.mjs check --all --root <工作台根>
+# Check every scene
+node scene-memory.mjs check --all --root <workbench-root>
 ```
 
-`<工作台根>` 不給也行——工具會往上找，或讀環境變數 `DSH_WORKBENCH_ROOT`。
+`<workbench-root>` may be omitted——the tool searches upwards, or reads the environment variable `DSH_WORKBENCH_ROOT`.
 
-### 換會話（前置檢查 ＋ 三處同步自檢）
+### Session switch (preconditions + three-point sync self-check)
 
 ```bash
-# 前置檢查：能不能換？＋ 印出引擎端要做的五步
-node switch-session.mjs 計畫 --root <工作台根> --scene <場景名>
+# Preconditions: may we switch? + print the five steps the engine side must do
+node switch-session.mjs plan --root <workbench-root> --scene <scene-name>
 
-# 換完自檢：三處會話 id 一致 ＋ check 通過 ＋ §₀ 沒超紅線
-node switch-session.mjs 檢查 --root <工作台根> --scene <場景名> [--新會話id <id>]
+# Self-check after the switch: the three session ids agree + check passes + §0 is within the hard limit
+node switch-session.mjs check --root <workbench-root> --scene <scene-name> [--new-session-id <id>]
 ```
 
-> **「三處」＝場景配置 sessionId ／ 身份索引會話 id 欄 ／ §₀ 交接署名。**
-> 少同步一處的症狀都是「切場景像換了個人」⇒ 工具一次對三處，不要靠症狀猜。
+> **The "three points" = the sessionId in the scene config ／ the session id column in the identity index ／ the §0 handover signature.**
+> The symptom of syncing only two of them is always "switching scenes feels like a different person" ⇒ the tool checks all three at once; do not guess from the symptom which one you missed.
 
-### 會話檔案層（聊天全文的歸處）
+### Session archive layer (where the full chat transcript lives)
 
 ```bash
-# 從引擎匯出檔抽出（自動重建索引）
-node session-archive.mjs 抽出 --root <工作台根> --引擎端 <匯出.json> --scene <場景名>
+# Extract from the engine export file (the index is rebuilt automatically)
+# [--session <session-id>] narrows the export down to one session
+node session-archive.mjs extract --root <workbench-root> --engine-export <export.json> --scene <scene-name> [--session <session-id>]
 
-# 重建索引 / 自檢 / 查
-node session-archive.mjs 索引 --root <工作台根>
-node session-archive.mjs 檢查 --root <工作台根>
-node session-archive.mjs 列出 --root <工作台根> --scene <名>
-node session-archive.mjs 列出 --root <工作台根> --關鍵詞 <字>
+# Rebuild the index / self-check / query
+node session-archive.mjs index --root <workbench-root>
+node session-archive.mjs check --root <workbench-root>
+node session-archive.mjs list --root <workbench-root> --scene <name>
+node session-archive.mjs list --root <workbench-root> --keyword <word>
 ```
 
-> **引擎端的匯出格式**（repo 定介面，不定引擎怎麼匯）：
-> 一個 JSON，欄位 `會話id`／`會話名`／`場景id`／`開始時間`／`訊息[]{角色,文字}`。
-> 角色收中英兩種寫法。
+> **The engine-side export format** (the repo defines the interface, not how the engine exports):
+> one JSON, fields `sessionId` / `sessionName` / `sceneId` / `Start Time` / `message[]{role,text}`.
+> Roles accept both Chinese and English spellings.
 
-### 工作流校驗與執行（另外兩支工具）
+### Workflow validation and execution (two more tools)
 
 ```bash
-# 檢查工作台裡所有工作流定義
-node verify-workflow.mjs --root <工作台根>
+# Check every workflow definition in the workbench
+node verify-workflow.mjs --root <workbench-root>
 
-# 只檢查某一份
-node verify-workflow.mjs --root <工作台根> --file 磁碟體檢與清理
+# Check only one of them
+node verify-workflow.mjs --root <workbench-root> --file disk-check-and-cleanup
 
-# 直接檢查一個檔案
-node verify-workflow.mjs --file案 /path/to/某工作流.yaml
+# Check a file directly
+node verify-workflow.mjs --file /path/to/some-workflow.yaml
 ```
 
-**工作流執行器**（`run-workflow.mjs`）——讓場景真的串成一條線跑：
+**The workflow runner** (`run-workflow.mjs`)——makes the scenes actually run as one line:
 
 ```bash
-# 啟動（預檢不通過就拒絕啟動）
-node run-workflow.mjs start --root <工作台根> --工作流 <id>
+# Start (refuses to start if the preconditions do not pass)
+node run-workflow.mjs start --root <workbench-root> --workflow <id>
 
-# 推進下一跳（產生派單檔）
-node run-workflow.mjs step --root <工作台根> --run <run-id>
+# Advance to the next hop (produces the dispatch file)
+node run-workflow.mjs step --root <workbench-root> --run <run-id>
 
-# 收回執（★ 驗收：不合格就擋下並就地停）
-node run-workflow.mjs 回執 --root <工作台根> --run <run-id> --回執 <回執檔>
+# Collect the receipt (★ acceptance: if it does not qualify, it is blocked and stops on the spot)
+node run-workflow.mjs receipt --root <workbench-root> --run <run-id> --receipt <receipt-file>
 
-# 修好之後接回去
-node run-workflow.mjs resume --root <工作台根> --run <run-id>
+# Reconnect after fixing it
+node run-workflow.mjs resume --root <workbench-root> --run <run-id>
 
-# 門檻確認通過，繼續下一跳
-node run-workflow.mjs resume --root <工作台根> --run <run-id> --門檻通過
+# The gate is confirmed — continue to the next hop
+node run-workflow.mjs resume --root <workbench-root> --run <run-id> --gate-passed
 
-# 看狀態
-node run-workflow.mjs status --root <工作台根>
+# Look at the status
+node run-workflow.mjs status --root <workbench-root>
 ```
 
-**回執校驗**（`verify-receipt.mjs`）——單獨用：
+The run state is one of `running` / `completed` / `stopped` / `waiting-for-gate`. `resume` pulls a `stopped` or `waiting-for-gate` run back to `running`.
+
+**Receipt validation** (`verify-receipt.mjs`)——use it standalone:
 
 ```bash
-node verify-receipt.mjs --root <工作台根> --scene <場景名> --回執 <回執檔>
+node verify-receipt.mjs --root <workbench-root> --scene <scene-name> --receipt <receipt-file>
 ```
 
-它檢兩件事：
-1. 回執有沒有三件套（差異集合 · 可累積物 · 下一棒）
-2. ★ **那些可累積物有沒有真的落地到場景記憶**（§五 決策與坑或專屬技能裡找得到）
+It checks two things:
+1. Does the receipt carry the three-part contract (`Diff Set` · `Accumulable Artifact` · `Next Handoff`)
+2. ★ **Did those accumulable artifacts actually land in the scene memory** (findable in `§5` Decisions and Pitfalls, or in the dedicated skill)
 
-> 第 2 點是重點：**只在回執裡寫了不算數**，必須在場景記憶裡找得到。
-> 這是「累積真的發生」的機械證據。
+> Point 2 is the point: **writing it only in the receipt does not count**——it must be findable in the scene memory.
+> This is the mechanical evidence that "accumulation really happened".
+> Override the accumulation target with `--accumulation-file <path>`.
 
-**這個版本是離線執行器**：它不真的呼叫引擎，而是把每一步該做什麼寫成檔案並推進狀態機。
-這是刻意的——**引擎中立**。引擎專用版只要把「產生派單」換成「真的派出去」即可，
-狀態機與驗收邏輯完全沿用。
+**This version is an offline runner**: it does not actually call the engine; it writes what each step should do into files and drives a state machine.
+That is deliberate——**engine-neutral**. The engine-specific version only replaces "produce the dispatch" with "really send it";
+the state machine and the acceptance logic are reused unchanged.
 
-#### 端到端驗收
+#### End-to-end acceptance
 
 ```bash
 bash workflow-acceptance.sh
 ```
 
-12 項：預檢擋人 · 缺可累積物被擋 · 沒落地被擋 · 落地後通過 ·
-可累積物跨場景傳遞 · 門檻攔截 · 門檻確認後才繼續。
+12 items: the preconditions block people · a missing accumulable artifact is blocked · not landing is blocked · landing passes ·
+the accumulable artifact crosses scenes · the gate intercepts · it only continues after the gate is confirmed.
 
-### 工作流校驗（另一支工具）
+### Workflow validation (the other tool)
 
 ```bash
-# 檢查工作台裡所有工作流定義
-node verify-workflow.mjs --root <工作台根>
+# Check every workflow definition in the workbench
+node verify-workflow.mjs --root <workbench-root>
 
-# 只檢查某一份
-node verify-workflow.mjs --root <工作台根> --file 磁碟體檢與清理
+# Check only one of them
+node verify-workflow.mjs --root <workbench-root> --file disk-check-and-cleanup
 
-# 直接檢查一個檔案
-node verify-workflow.mjs --file案 /path/to/某工作流.yaml
+# Check a file directly
+node verify-workflow.mjs --file /path/to/some-workflow.yaml
 ```
 
-它會找這些位置（取第一個存在的）：
+It looks in these places (the first one that exists wins):
 
 ```
-<工作台根>/工作流/
-<工作台根>/場景/_共享記憶/工作流/
-<工作台根>/共享/工作流/
+<workbench-root>/workflows/
+<workbench-root>/scenes/_shared-memory/workflows/
+<workbench-root>/shared/workflows/
 ```
 
-**擋什麼**：缺必要欄位、步驟缺「場景／目的／判據」、「需確認」不是 true/false、
-「失敗策略」不是合法值、步驟不是清單。
-**只提示**：判據太短（可能不可驗證）、完全沒有門檻、每步都設門檻、未知欄位。
+**What it blocks**: missing required fields (`name` / `version` / `steps`), a step missing `scene` / `purpose` / `criteria`,
+`needsConfirmation` not being true/false, `failureStrategy` not being a legal value, steps not being a list.
+**What it only hints at**: criteria too short (maybe not verifiable), no gate at all, a gate on every step, unknown fields.
 
-> 它解析的是本專案定義的那個**受限 YAML 子集**（純量、`-` 清單、兩層縮排）。
-> 遇到看不懂的結構會**明確報錯**而不是猜錯——這是刻意的：
-> 一個會默默猜錯的檢查器，比沒有檢查器更危險。
+> It parses the **restricted YAML subset** this project defines (scalars, `-` lists, two levels of indentation).
+> When it meets a structure it does not understand it **reports an explicit error instead of guessing**——that is deliberate:
+> a checker that silently guesses wrong is more dangerous than no checker.
 
-### 記憶根怎麼找
+### Dispatch validation (the last tool)
+
+```bash
+node verify-dispatch.mjs --root <workbench-root> --dispatch <dispatch-file>
+```
+
+**What it blocks**: a missing field of the dispatch contract (`What` / `Criteria` / `Output Location` / `Receipt Format` / `Needs`),
+an empty field, a `Receipt Format` that does not mention the three-part contract (`Diff Set` / `Accumulable Artifact` / `Next Handoff`).
+**What it only hints at**: vague or too-short `Criteria`, irreversible content without a gate marker.
+
+### How the memory root is found
 
 ```
-環境變數 DSH_SCENE_MEMORY
-  → <工作台根>/場景
-  → <工作台根>/引擎數據/.dsh/場景記憶
+environment variable DSH_SCENE_MEMORY
+  → <workbench-root>/scenes
+  → <workbench-root>/engine-data/.dsh/scene-memory
 ```
-取第一個**存在且是目錄**的。
+Take the first one that **exists and is a directory**.
 
-> **這個候選鏈是重點，不是細節。**
-> 曾經兩個腳本各自硬編碼路徑，結果訊息寫進了舊看板、收件方根本收不到，
-> 而且**表面完全看不出來**（見[已知裂縫 #3](../02-implementation/4-known-gaps-and-todo.md)）。
-> 統一路徑解析是那個 bug 的架構級修法。
+> **This candidate chain is the point, not a detail.**
+> Once two scripts each hardcoded the path, messages went to the old board, the recipient never got them,
+> and **nothing showed on the surface** (see [Known Gap #3](../02-implementation/4-known-gaps-and-todo.md)).
+> Unified path resolution is the architecture-level fix for that bug.
 
-### 身份索引怎麼找
+### How the identity index is found
 
 ```
 scenes/_scene-identity-index.md
   → 外壳/scenarios/_scene-identity-index.md
 ```
 
-> `外壳/` 是本機工作台的**實際目錄名**（原樣保留，含其簡體字形）——
-> 這是底層引擎的既有慣例，不是錯字。工具取第一個**存在的**路徑，
-> 所以你的工作台用哪個名稱都行；`scenes/_scene-identity-index.md` 是本工具建議的新位置。
+> `外壳/` is the **actual directory name** on the local workbench (kept verbatim, including its simplified glyphs)——
+> it is the underlying engine's existing convention, not a typo. The tool takes the first path that **exists**,
+> so whichever name your workbench uses is fine; `scenes/_scene-identity-index.md` is the new location this tool recommends.
 
 ---
 
-## 二、退出碼
+## 2. Exit codes
 
-| 碼 | 意思 |
+| Code | Meaning |
 |---|---|
-| `0` | 通過（可能仍有警告） |
-| `1` | **有問題，已擋下** |
-| `2` | 用法錯誤 |
+| `0` | Passed (warnings may still be present) |
+| `1` | **There is a problem, it is blocked** |
+| `2` | Usage error |
 
-> 退出碼要對，因為這工具會被別的腳本、cron、CI 呼叫。
-> **一個永遠回 0 的檢查器，比沒有檢查器更危險。**
+> Exit codes must be right, because other scripts, cron and CI call this tool.
+> **A checker that always returns 0 is more dangerous than no checker.**
 
 ---
 
-## 三、check 檢查什麼
+## 3. What `check` inspects
 
-### 擋（exit=1，結構性問題）
+### Blocked (exit=1, structural problems)
 
-| 檢查 | 訊息 |
+| Check | Message |
 |---|---|
-| 缺必要檔案 | `缺檔案 scene-private-memory.md` |
-| 缺必要目錄 | `缺目錄 專案記憶/` |
-| **場景邊界失效** | `場景目錄缺少 .git（場景邊界失效 ⇒ 專屬技能不會被載入，且症狀不明顯）` |
-| 身份索引無此卡 | `身份索引裡沒有這張場景卡：<名>` |
-| 定位卡欄位空 | `身份索引的定位卡欄位是空的` |
-| 定位卡不存在 | `定位卡不存在：<路徑>` |
-| 卡指紋過期 | `卡指紋過期（卡已改，跑 stamp）<fp>…≠<real>…` |
-| 身份卡無指紋 | `身份卡裡沒有卡指紋（跑 stamp 重蓋）` |
-| 缺核心職責 | `缺「## 核心職責」塊（場景私有記憶必填）` |
-| 職責條數不足 | `核心職責只有 2 條（至少 3 條）` |
-| §₀ 缺小節 | `§₀ 缺小節 ### 4) 下一步 / 卡點` |
-| §₀ 超紅線 | `§〇 5000 B 超 4 KB（紅線 4096）` |
-| 缺 §₀ 頭 | `缺 §〇 交接頭（## §〇）` |
+| Missing required file | `Missing file scene-private-memory.md` |
+| Missing required directory | `Missing directory project-memory/` |
+| **The scene boundary is broken** | `Scene directory is missing .git (scene boundary broken ⇒ the dedicated skill will not load, and the symptom is subtle)` |
+| The identity index has no card for this scene | `Cannot find this scene in the identity index: <name>` |
+| The locator card column is empty | `Identity index locator card column is empty (value: <value>)` |
+| The locator card does not exist | `Locator card does not exist: <path>` |
+| The card fingerprint is stale | `Card fingerprint stale (card changed, run stamp)<fp>…≠<real>…` |
+| The identity card has no fingerprint | `Identity card has no card fingerprint (run stamp to restamp)` |
+| Missing core responsibilities | `missing "## Core Responsibilities" block (required in the scene private memory)` |
+| Too few responsibility items | `Core responsibilities has only 2 items (at least 3)` |
+| §0 missing a subsection | `§0 missing subsection ### 4) Next Steps / Blockers` |
+| §0 over the hard limit | `§0 5000 B over 4 KB (hard limit 4096)` |
+| Missing the §0 heading | `Missing §0 handover heading (## §0)` |
 
-### 只警告（exit=0）
+### Warning only (exit=0)
 
-| 檢查 | 訊息 |
+| Check | Message |
 |---|---|
-| 主檔案超標 | `主檔案 26.0 KB 超 25 KB（紅線，搬舊內容進 歸檔/ 並留指針）` |
-| 專案記憶超標 | `專案記憶 X.md 9.0 KB 超 8 KB` |
-| 專案表過期 | `當前專案表寫「暫無」，但專案記憶有 3 份（表需更新）` |
-| 下一步為空 | `第 4 小節 下一步/卡點 為空` |
-| 舊版 §0 頭 | `用的是舊 §0 頭（## 〇、當前交接），建議改為 ## §〇` |
+| Main file over the limit | `Main file 26.0 KB over 25 KB (hard limit — move old content into archive/ and leave a pointer)` |
+| Project memory over the limit | `Project memory X.md 9.0 KB over 8 KB` |
+| The project table is stale | `Current projects table says "none", but project memory has 3 copies (the table needs updating)` |
+| Next steps are empty | `Section 4 (next steps / blockers) is empty` |
+| The legacy §0 heading | `Uses the old §0 heading (the legacy form) — change it to ## §0` |
 
-> **分清楚「擋」與「警」**：
-> 擋 = 結構性錯誤，繼續下去一定壞 ⇒ fail-closed。
-> 警 = 品質問題，可能只是忘了更新 ⇒ 讓人自己判斷。
+> **Tell "block" and "warn" apart**:
+> block = a structural error, continuing will definitely break something ⇒ fail-closed.
+> warn = a quality issue, maybe just an update was forgotten ⇒ let a human judge.
 
 ---
 
-## 四、反例驗收（自我驗收）
+## 4. Counter-example acceptance (self-acceptance)
 
 ```bash
 bash negative-acceptance.sh
 ```
 
-這個腳本會**故意弄壞**demo-scene，逐一驗證工具會擋下。輸出：
+This script **deliberately breaks** demo-scene and verifies one by one that the tool blocks it.
+Each case is restored from `demo-workbench.clean/`, so the script is safe to run repeatedly. Output:
 
 ```
-═══ 反例驗收：校驗工具必須能證明「該失敗時會失敗」 ═══
+═══ Negative Acceptance: the validator must prove that it fails when it should ═══
 
-【V8】正常資料應該通過（期望 exit=0）
-  ✓ 正常場景全部通過
-【V1】§₀ 灌爆 4 KB 紅線（期望 exit=1）
-  ✓ §₀ 超紅線被擋
-【V2】刪掉「### 4) 下一步 / 卡點」（期望 exit=1）
-  ✓ §₀ 缺小節被擋
-【V3】改定位卡但沒重蓋身份卡 ⇒ 指紋過期（期望 exit=1）
-  ✓ 卡指紋過期被擋
-【V5】刪掉「## 核心職責」整塊（期望 exit=1）
-  ✓ 缺核心職責被擋
-【V6】核心職責只寫 2 條（期望 exit=1）
-  ✓ 核心職責條數不足被擋
-【V9】場景目錄缺 .git（期望 exit=1）
-  ✓ 缺 .git 被擋
-【V10】身份索引裡沒有這張場景卡（期望 exit=1）
-  ✓ 索引無此卡被擋
-【V11】定位卡欄位指向不存在的檔（期望 exit=1）
-  ✓ 定位卡不存在被擋
-【V7】專案記憶有份但當前專案表寫「暫無」（期望 exit=0 + 警告）
-  ✓ 表格過期只警告不擋（exit=0）
+【V8】Normal data should pass (expected exit=0)
+  ✓ Normal scene passes all checks
+【V1】§0 blown past the 4 KB hard limit (expected exit=1)
+  ✓ §0 over hard limit blocked
+【V2】Delete the "### 4) Next Steps / Blockers" subsection (expected exit=1)
+  ✓ Missing §0 subsection is blocked
+【V3】Change the locator card without restamping the identity card ⇒ stale fingerprint (expected exit=1)
+  ✓ Stale card fingerprint is blocked
+【V5】Delete the whole "## Core Responsibilities" block (expected exit=1)
+  ✓ Missing core responsibilities blocked
+【V6】Core responsibilities has only 2 items (expected exit=1)
+  ✓ Too few core responsibilities blocked
+【V9】Scene directory has no boundary marker (expected exit=1)
+  ✓ Missing boundary marker is blocked
+【V10】This scene is not in the identity index (expected exit=1)
+  ✓ Scene absent from the index is blocked
+【V11】Locator card column points at a file that does not exist (expected exit=1)
+  ✓ Missing locator card blocked
+【V7】Project memory has an entry but the current projects table says "none" (expected exit=0 + warning)
+  ✓ warning (exit=0)
 
-═══ 結果：10 通過，0 失敗 ═══
+═══ Result: 10 passed, 0 failed ═══
 ```
 
-> ⚠️ **只看「正常情況通過」不算驗證。**
-> 一個從不報錯的檢查器，比沒有檢查器更危險——
-> 它會讓人以為有防護，其實沒有。
+> ⚠️ **Only seeing "the normal case passes" does not count as verification.**
+> A checker that never reports anything is more dangerous than no checker——
+> it makes people think they are protected when they are not.
 
 ---
 
-## 五、規則單一來源
+## 5. Single source of truth for the rules
 
-紅線、小節清單、指紋長度都寫在 **`handover-rules.json`**，工具讀它，不硬編碼。
+The hard limits, the subsection list and the fingerprint length all live in **`handover-rules.json`**; the tools read it and never hardcode it.
 
 ```json
 {
@@ -280,61 +295,77 @@ bash negative-acceptance.sh
   "mainMaxBytes": 25600,
   "projectMaxBytes": 8192,
   "fingerprintLength": 16,
-  "sec0Subsections": ["### 1) 上次交接", "..."],
-  "dutyHeading": "## 核心職責",
+  "sec0Subsections": ["### 1) Last Handover", "..."],
+  "dutyHeading": "## Core Responsibilities",
   "dutyMinItems": 3
 }
 ```
 
-工具的搜尋順序：
+The tool's search order:
 ```
-工具同目錄/handover-rules.json
-  → <工作台根>/handover-rules.json
+<tool-dir>/handover-rules.json
+  → <workbench-root>/handover-rules.json
   → 04-templates/handover-rules.json
-  → （都沒有 ⇒ 內建預設）
+  → (none found ⇒ built-in defaults)
 ```
 
-> **改紅線只改這一個檔案。**
-> 改了之後記得同步三處：規則檔、工具內建預設（若有）、文件裡提到的數字。
+> **To change a hard limit, change that one file.**
+> After changing it, remember to sync three places: the rules file, the tool's built-in defaults (if any), and the numbers quoted in the docs.
 
 ---
 
-## 六、接到自己的目錄
+## 6. Plugging it into your own directory
 
 ```bash
-# 1) 你的工作台長這樣
-<我的工作台>/
-└── 場景/
+# 1) Your workbench looks like this
+<my-workbench>/
+└── scenes/
     ├── _scene-identity-index.md
-    └── <我的場景>/
-        ├── .git/          ← 場景邊界（記得 git init）
+    └── <my-scene>/
+        ├── .git/          ← the scene boundary (remember to git init)
         ├── locator-card.md
         └── scene-private-memory.md
 
-# 2) 跑
-node scene-memory.mjs list --root <我的工作台>
-node scene-memory.mjs init --scene <我的場景> --root <我的工作台>
-node scene-memory.mjs stamp --scene <我的場景> --root <我的工作台>
-node scene-memory.mjs check --scene <我的場景> --root <我的工作台>
+# 2) Run
+node scene-memory.mjs list --root <my-workbench>
+node scene-memory.mjs init --scene <my-scene> --root <my-workbench>
+node scene-memory.mjs stamp --scene <my-scene> --root <my-workbench>
+node scene-memory.mjs check --scene <my-scene> --root <my-workbench>
 ```
 
-**注意**：
-- 場景目錄**必須有 `.git/`**（場景邊界），否則 check 會報錯——
-  這是故意的：沒有邊界，專屬技能不會被載入，而症狀不明顯。
-- 身份索引的欄位數要對齊（7 欄）：
-  `場景id | 面板id | 面板標題 | 會話名 | 會話id | 定位卡 | 主技能`
+**Note**:
+- The scene directory **must have `.git/`** (the scene boundary), otherwise `check` reports an error——
+  this is deliberate: without a boundary the dedicated skill will not load, and the symptom is not obvious.
+- The identity index needs the right number of columns (7):
+  `Scene | Panel ID | Panel Title | Session Name | Session ID | Locator Card | Main Skill`
 
 ---
 
-## 七、這工具**不**做什麼
+## 7. Data formats the tools read and write
 
-| 不做 | 為什麼 |
+| Format | Required tokens |
 |---|---|
-| 不寫場景記憶的正文 | 記憶是**人寫**的。工具只做骨架、補缺小節、蓋章、檢查 |
-| 不動 §₀ 已有內容 | 交接只「缺才補」，不覆寫——覆寫會洗掉進度，比沒交接更糟 |
-| 不刪任何東西 | 工具只新增與檢查。刪除是有破壞性的操作，不該由校驗工具做 |
-| 不碰身份卡/場景畫像的手改 | 這兩個由工具全量重寫，手改會被還原 |
+| Scene memory §0 | `## §0` + `### 1) Last Handover` / `### 2) Current Projects` / `### 3) Private Memory Changes` / `### 4) Next Steps / Blockers` / `### 5) Full Picture` |
+| Scene private memory | `## Core Responsibilities` (at least 3 items) |
+| Accumulation target | `§5` (Decisions and Pitfalls) |
+| Receipt | `Diff Set` / `Accumulable Artifact` / `Next Handoff` |
+| Dispatch | `What` / `Criteria` / `Output Location` / `Receipt Format` / `Needs` |
+| Workflow YAML | `name` / `version` / `steps`; per step `scene` / `purpose` / `criteria`, optional `output` / `needs` / `needsConfirmation`, plus `failureStrategy` ∈ `stop-and-wait` / `continue` / `rollback` |
+| Run state | `running` / `completed` / `stopped` / `waiting-for-gate` |
+| Files | `scene-private-memory.md` / `identity-card.md` / `locator-card.md` / `scene-portrait.md` / `_file-index.md` / `_scene-identity-index.md` / `scene-config.json` / `handover-rules.json` |
+| Directories | `scenes/` / `project-memory/` / `archive/` / `workflows/` / `runs/` / `receipts/` / `session-archive/` / `engine-data/` |
 
 ---
 
-⬅️ **回**：[可執行工具 README](README.md) ｜ **下一篇**：[模板](../04-templates/)
+## 8. What this tool does **not** do
+
+| Does not | Why |
+|---|---|
+| Does not write the body of the scene memory | The memory is written by **humans**. The tool only builds the skeleton, fills the missing subsections, stamps and checks |
+| Does not touch existing §0 content | The handover only fills what is missing, it never overwrites——overwriting wipes out the progress, which is worse than not handing over at all |
+| Does not delete anything | The tool only adds and checks. Deletion is destructive and should not be done by a validation tool |
+| Does not tolerate hand-edits of the identity card / scene portrait | These two are rewritten in full by the tool; hand edits are reverted |
+
+---
+
+⬅️ **Back**: [Executable Tools README](README.md) ｜ **Next**: [Templates](../04-templates/)

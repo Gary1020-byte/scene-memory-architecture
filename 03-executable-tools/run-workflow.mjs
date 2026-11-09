@@ -1,22 +1,25 @@
 #!/usr/bin/env node
 /**
- * 工作流執行器 —— 讓「場景串成一條線」真的跑起來
+ * Workflow executor —— makes "a chain of scenes" actually run.
  *
- * 用法：
- *   node run-workflow.mjs start  --root <工作台根> --工作流 <id>   啟動（預檢 → 建 run 狀態）
- *   node run-workflow.mjs step   --root <工作台根> --run <run-id>  推進下一跳（開派單）
- *   node run-workflow.mjs 回執   --root <工作台根> --run <run-id> --回執 <檔>  收回執並驗收
- *   node run-workflow.mjs status --root <工作台根> [--run <run-id>]  看狀態
+ * Usage:
+ *   node run-workflow.mjs start  --root <workbench-root> --workflow <id>   start (preconditions → create the run state)
+ *   node run-workflow.mjs step   --root <workbench-root> --run <run-id>    advance to the next hop (produce a dispatch)
+ *   node run-workflow.mjs receipt --root <workbench-root> --run <run-id> --receipt <file>  collect a receipt and validate it
+ *   node run-workflow.mjs status --root <workbench-root> [--run <run-id>]  show the state
  *
- * 退出碼：0 = 成功；1 = 有阻擋；2 = 用法/找不到
+ * Exit codes: 0 = success; 1 = blocked; 2 = usage error / not found
  *
- * ★ 這個版本是「離線執行器」：它不真的呼叫引擎，而是把每一步該做什麼
- *   （派單內容、該讀的檔案、該檢查的東西）寫成檔案並推進狀態機。
- *   這是刻意的：**引擎中立**——引擎專用版只要把「產生派單」換成「真的派出去」即可，
- *   狀態機與驗收邏輯完全沿用。
+ * ★ This version is the "offline executor": it does not really call the engine, it writes
+ *   down what each step should do (the dispatch content, the files to read, the things to
+ *   check) and advances the state machine.
+ *   That is deliberate: **engine-neutral** — the engine-specific version only has to swap
+ *   "produce a dispatch" for "really send it"; the state machine and the acceptance logic
+ *   are used as-is.
  *
- * ★ 這支工具的真正價值：它把「規格」變成「會卡住你的東西」。
- *   預檢不過就不准啟動；回執不合格就不准往下走。
+ * ★ The real value of this tool: it turns "the spec" into "something that blocks you".
+ *   If the preconditions fail it refuses to start; if a receipt is not acceptable it refuses
+ *   to move on.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -84,14 +87,14 @@ function readState (runDir) {
     if (m) {
       const k = m[1].trim()
       const v = m[2].trim()
-      // ★ 寫與讀的用字只要差一個字，狀態就會靜默變成 undefined。
+      // ★ If the writing and the reading differ by a single word, the state silently becomes undefined.
       if (k === 'Current Step' || k === 'currentStep') state.currentStep = Number(v)
       if (k === 'Status' || k === 'status') state.status = v
       if (k === 'Workflow' || k === 'workflow') state.workflow = v
-      // ★ run id / 啟動時間也要讀回來。
-      //   少了這兩行，第二次讀狀態檔時 state.runId 會變 undefined，
-      //   派單 id 就會變成「派單-undefined-步N-xxxx」——派單 id 毀了，
-      //   回執認領校驗也就形同虛設。
+      // ★ The run id / start time must be read back too.
+      //   Without these two lines, state.runId becomes undefined the second time the state
+      //   file is read, and the dispatch id turns into "dispatch-undefined-stepN-xxxx" — the
+      //   dispatch id is ruined, and the receipt claim check becomes useless.
       if (k === 'Run ID' || k === 'run id' || k === 'runId') state.runId = v
       if (k === 'Start Time' || k === 'startTime') state.startTime = v
       continue
@@ -150,8 +153,9 @@ function listRuns () {
 /* ───────────────────────── Dispatch Self-Check ───────────────────────── */
 
 /**
- * 產生派單後立刻檢查：缺判據的派單送出去會靜默失效。
- * 這是「送出之前」的最後一道閘，比「收到之後才發現不對」便宜得多。
+ * Check the dispatch immediately after producing it: a dispatch without acceptance
+ * criteria fails silently once it is sent.
+ * This is the last gate "before sending", far cheaper than "finding it wrong after receiving".
  */
 function checkDispatch (p) {
   try {
@@ -176,7 +180,7 @@ function cmdStart () {
   const wf = loadWorkflow(wfId)
   const steps = stepsOf(wf.doc)
 
-  // ★ 預檢（fail-closed）：任一不過就拒絕啟動
+  // ★ Preconditions (fail-closed): if any of them fails, refuse to start
   const problems = []
   if (!wf.doc['id']) problems.push('Workflow is missing id')
   if (!wf.doc['version']) problems.push('Workflow is missing version')
@@ -207,10 +211,10 @@ function cmdStart () {
   const id = `${wf.name}-${today()}-${String(Date.now()).slice(-6)}`
   const runDir = path.join(execRoot, id)
   writeText(path.join(runDir, 'workflow.yaml'), readText(wf.path))
-  writeText(path.join(runDir, rules.carryFile), `# Carry File · ${wf.name}\n\n> The carrier that passes each hop's accumulable artifact down the chain. The next hop's dispatch quotes this content.\n\n## step 1 的Accumulable Artifact\n\n（尚未執行）\n`)
+  writeText(path.join(runDir, rules.carryFile), `# Carry File · ${wf.name}\n\n> The carrier that passes each hop's accumulable artifact down the chain. The next hop's dispatch quotes this content.\n\n## Step 1 Accumulable Artifact\n\n(not executed yet)\n`)
 
   const state = {
-    工作流: wf.name,
+    workflow: wf.name,
     runId: id,
     startTime: now(),
     status: 'running',
@@ -262,16 +266,17 @@ function cmdStep () {
 }
 
 /**
- * ★ 產生某一步的派單檔（step 與 run 共用同一份邏輯）。
+ * ★ Produce the dispatch file of one step (step and run share the same logic).
  *
- * 為什麼要抽出來：`step` 是手動跑一格，`run` 是迴圈跑一格。
- *   兩邊若各寫一份 producing logic，就會出現「手動跑跟自動跑產出的派單長得不一样」
- *   ——然後自動推進會在某些步驟失敗而你查不出原因。
+ * Why it is factored out: `step` runs one hop by hand, `run` runs one hop in a loop.
+ *   If each side had its own producing logic, the dispatch produced by hand and the dispatch
+ *   produced automatically could drift apart — and then auto-advance fails at some step with
+ *   no reason you can find.
  *
  * @returns {{dispatchPath:string, dispatch:string, dispatchId:string, carried:string}}
  */
 function produceStep (runDir, state, wfDoc, steps, step, stepNo) {
-  // 上一跳的可累積物（從交接串取）
+  // The accumulable artifact of the previous hop (taken from the carry file)
   let carried = ''
   const carryFile = path.join(runDir, rules.carryFile)
   if (exists(carryFile) && stepNo > 1) {
@@ -281,9 +286,11 @@ function produceStep (runDir, state, wfDoc, steps, step, stepNo) {
     if (m) carried = m[1].trim()
   }
 
-  // ★ 派單 id：這一跳的唯一識別。
-  //   回執必須自報這個 id，否則無法確認「這份回覆是回給這張派單的」。
-  //   沒有它，兩條工作流併發送同一場景時會互相認領錯回執而且沒有任何錯誤訊號。
+  // ★ The dispatch id: the unique identifier of this hop.
+  //   The receipt has to report this id, otherwise there is no way to confirm "this reply
+  //   answers this dispatch".
+  //   Without it, two workflows sending to the same scene at the same time claim each
+  //   other's receipts and there is not a single error message.
   const dispatchId = 'dispatch-' + state.runId + '-step' + stepNo + '-' +
     Math.random().toString(36).slice(2, 6)
 
@@ -313,7 +320,7 @@ ${step['needsConfirmation'] === true || step['needsConfirmation'] === 'true' ? '
   const dispatchPath = path.join(runDir, rules.receiptDir, `dispatch-${stepNo}.md`)
   writeText(dispatchPath, dispatch)
 
-  // ★ 產生派單後立刻自檢（送出之前的最後一道閘）
+  // ★ Self-check the dispatch right after producing it (the last gate before sending)
   const dispatchCheck = checkDispatch(dispatchPath)
   if (!dispatchCheck.ok) {
     console.log('\n✗ The generated dispatch is invalid: ')
@@ -332,10 +339,13 @@ ${step['needsConfirmation'] === true || step['needsConfirmation'] === 'true' ? '
 /* ───────────────────────── resume ───────────────────────── */
 
 /**
- * ★ 這是實跑之後才發現要的東西。
- * 原規格只寫「失敗就地停」，沒寫「修好之後怎麼接回去」。
- * 實跑第一次被 fail-closed 擋下時，就卡死在「已停」——修好回執也收不進去。
- * 所以必須有 resume：把狀態從「已停」拉回「執行中」，重收同一跳的回執。
+ * ★ This is something you only discover by actually running it.
+ * The original spec only said "stop in place on failure", never "how do you pick it up
+ * after fixing it".
+ * The first time fail-closed blocked a real run, it was stuck in "stopped" — even a fixed
+ * receipt could not be collected.
+ * So resume has to exist: it pulls the state back from "stopped" to "running" and collects
+ * the receipt of the same hop again.
  */
 function cmdResume () {
   if (!runId) fail('resume requires --run <run-id>')
@@ -347,7 +357,7 @@ function cmdResume () {
     console.log('\n· run is already "running", no need to resume')
     return
   }
-  // ★ 門檻通過：跳過目前這一步，繼續下一跳
+  // ★ Gate passed: skip the current step, continue to the next hop
   if (getArg('--gate-passed') !== null) {
     const wfDoc0 = parseYaml(readText(path.join(runDir, 'workflow.yaml')))
     const steps0 = stepsOf(wfDoc0)
@@ -401,10 +411,11 @@ function cmdReceipt () {
 }
 
 /**
- * ★ 收回執 = 驗收（fail-closed）＋ 推進（cmdReceipt 與 run 共用）。
+ * ★ Collect a receipt = validate it (fail-closed) + advance (shared by cmdReceipt and run).
  *
- * 為什麼要抽出來：手動收回執與迴圈收回執必須是**同一套**邏輯，
- *   否則會出現「手動跑會擋、跑起來不擋」的漏洞——那等於自動推進沒有護欄。
+ * Why it is factored out: collecting a receipt by hand and collecting it in the loop must be
+ *   the **same** logic, otherwise there is a hole of the "by hand it is blocked, in the loop
+ *   it is not" kind — which means auto-advance has no guardrail.
  *
  * @returns {{ok:boolean, gate:boolean}}
  */
@@ -413,7 +424,7 @@ function acceptReceipt (runDir, state, wfDoc, steps, receiptPath) {
   const step = steps[stepNo - 1]
   if (!step) fail('Current step is out of range')
 
-  // ★ 收回執 = 驗收（fail-closed）
+  // ★ Collect a receipt = validate it (fail-closed)
   let rc = 0
   try {
     execFileSync(process.execPath, [
@@ -434,11 +445,11 @@ function acceptReceipt (runDir, state, wfDoc, steps, receiptPath) {
     return { ok: false, gate: false }
   }
 
-  // 存回執副本
+  // Save a copy of the receipt
   const saved = path.join(runDir, rules.receiptDir, `receipt-${stepNo}.md`)
   writeText(saved, readText(receiptPath))
 
-  // 可累積物寫進交接串（下一跳要吃）
+  // Write the accumulable artifact into the carry file (the next hop consumes it)
   const carryText = readText(receiptPath)
   const carriedLines = sectionLines(carryText, rules.artifactSection)
   const carried = carriedLines.length
@@ -458,7 +469,7 @@ function acceptReceipt (runDir, state, wfDoc, steps, receiptPath) {
   const st = state.steps.find(s => s.index === stepNo)
   if (st) { st.status = 'completed'; st.receipt = path.basename(saved) }
 
-  // 門檻？
+  // Is it a gate?
   const isGate = step['needsConfirmation'] === true || step['needsConfirmation'] === 'true'
   if (isGate) {
     state.status = 'waiting-for-gate'
@@ -484,33 +495,34 @@ function acceptReceipt (runDir, state, wfDoc, steps, receiptPath) {
 /* ───────────────────────── run (auto-advance) ───────────────────────── */
 
 /**
- * ★ 自動推進：while 迴圈，把「產生派單 → 送出 → 等回覆 → 收回執 → 驗收 → 推進」
- *   一次跑完。
+ * ★ Auto-advance: a while loop that runs "produce a dispatch → send it → wait for the reply
+ *   → collect the receipt → validate it → advance" all in one go.
  *
- * ★ 為什麼迴圈要寫在**腳本**裡而不是讓主控端 agent 一輪輪查：
- *   等待期間 agent 每查一次就是一次 LLM 回合（token 成本隨時間線性成長、
- *   context 越滾越大、還會被壓縮弄壞）。腳本迴圈等待期間 LLM 完全不參與，
- *   只有需要人介入（門檻／拒絕／逾時）才停下來回報。
+ * ★ Why the loop lives in the **script** instead of the orchestrating agent polling it:
+ *   while waiting, every poll by the agent is one LLM turn (the token cost grows linearly
+ *   with time, the context keeps rolling and may get mangled by compression). The LLM does
+ *   not take part at all while the script loop waits; it only stops and reports when a human
+ *   has to step in (gate / rejection / timeout).
  *
- * ★ 停下來的條件（每一個都要寫清楚原因，不能默默停）：
- *   ① 門檻（需確認: true）→ 狀態「等門檻」，等人 resume
- *   ② 場景忙到逾時 → 狀態「已停（場景忙）」，附拒絕原因
- *   ③ 回執不合格 → 狀態「已停」（既有 fail-closed 行為）
- *   ④ 回執疑似錯配 → 狀態「已停（回執疑似錯配）」
- *   ⑤ 逾時沒回覆 → 狀態「已停（逾時）」
- *   ⑥ 全部步驟完成 → 狀態「已完成」
+ * ★ The conditions for stopping (each one must state the reason clearly, never stop silently):
+ *   ① gate (needsConfirmation: true) → status "waiting-for-gate", wait for a human to resume
+ *   ② the scene stayed busy until the timeout → status "stopped (scene busy)", with the rejection reason
+ *   ③ the receipt was not acceptable → status "stopped" (the existing fail-closed behaviour)
+ *   ④ the receipt looks like a mismatch → status "stopped (receipt mismatch)"
+ *   ⑤ no reply before the timeout → status "stopped (timeout)"
+ *   ⑥ all steps done → status "completed"
  *
- * 用法：
- *   node run-workflow.mjs run --root <工作台根> --run <run-id>
+ * Usage:
+ *   node run-workflow.mjs run --root <workbench-root> --run <run-id>
  */
 function cmdRun () {
   if (!runId) fail('run requires --run <run-id>')
   const runDir = path.join(execRoot, runId)
   if (!exists(runDir)) fail('Cannot find run: ' + runId, 2)
 
-  // 派單要送到場景去，需要引擎端的派單工具。
+  // Sending a dispatch to a scene needs the engine-side dispatch tool.
   const dispatchTool = getArg('--dispatch-tool') || process.env.DSH_DISPATCH_TOOL ||
-    path.join(root, 'tool', '派單.mjs')
+    path.join(root, '工具', '派單.mjs')
   if (!exists(dispatchTool)) {
     fail('Cannot find dispatch tool: ' + dispatchTool + ' (use --dispatch-tool, or set DSH_DISPATCH_TOOL)', 2)
   }
@@ -553,11 +565,11 @@ function cmdRun () {
     const step = steps[idx]
     const stepNo = idx + 1
 
-    // ── 1. 產生派單 ──
+    // ── 1. produce the dispatch ──
     const produced = produceStep(runDir, state, wfDoc, steps, step, stepNo)
     console.log('\n▶ Step ' + stepNo + '/' + steps.length + '（' + step['scene'] + ') dispatch generated')
 
-    // ── 2. 送出去 + 等回覆 ──
+    // ── 2. send it out + wait for the reply ──
     const receiptOut = path.join(runDir, rules.receiptDir, `receipt-${stepNo}.md`)
     let rc = 0
     let out = ''
@@ -567,7 +579,7 @@ function cmdRun () {
         '--file', produced.dispatchPath,
         '--reply-output', receiptOut,
         '--recipient', step['scene'],
-        '--等scene秒數', String(maxWaitSec),
+        '--等場景秒數', String(maxWaitSec),
       ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
       rc = 0
     } catch (e) {
@@ -576,7 +588,7 @@ function cmdRun () {
     }
     for (const line of out.split('\n')) if (line.trim()) console.log('    ' + line)
 
-    // ── 3. 送出失敗分支：明確拒絕 / 逾時 / 錯配 ──
+    // ── 3. send-failure branch: explicit rejection / timeout / mismatch ──
     if (rc !== 0) {
       state.status = 'stopped'
       if (rc === 4) {
@@ -595,7 +607,7 @@ function cmdRun () {
       process.exit(rc)
     }
 
-    // ── 4. 收回執 + 驗收 + 推進 ──
+    // ── 4. collect the receipt + validate + advance ──
     if (!exists(receiptOut)) {
       state.status = 'stopped'
       state.blocker = '- step ' + stepNo + ': it claims to have sent it but there is no receipt file'

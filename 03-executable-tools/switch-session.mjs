@@ -1,27 +1,31 @@
 #!/usr/bin/env node
 /**
- * switch-session.mjs —— 把「換會話」變成一條可重複、有自檢的原子操作
+ * switch-session.mjs —— makes "switching session" a repeatable atomic operation with a self-check
  *
- * 用法：
- *   node switch-session.mjs 計畫 --root <工作台根> --scene <場景名>
- *   node switch-session.mjs check --root <工作台根> --scene <場景名> [--new-session-id <id>]
+ * Usage:
+ *   node switch-session.mjs plan  --root <workbench-root> --scene <scene-name>
+ *   node switch-session.mjs check --root <workbench-root> --scene <scene-name> [--new-session-id <id>]
  *
- * 退出碼：0 = 通過；1 = 有問題；2 = 用法錯誤
+ * Exit codes: 0 = passed; 1 = something is wrong; 2 = usage error
  *
- * ★ 這支工具做的是「引擎中立的部分」：
- *   前置檢查（能不能換）、同步三處（新會話 id 該寫到哪）、換完的自檢。
- *   **引擎端做什麼**：建新會話、把舊會話改名＋真歸檔、把新會話 id 給這支工具。
- *   本工具不碰引擎——它只保證「文件層的三處同步」不會漏。
+ * ★ What this tool does — the "engine-neutral part":
+ *   the preconditions (may we switch), syncing the three places (where the new session id has
+ *   to be written), and the self-check after the switch.
+ *   **What the engine side does**: create the new session, rename + really archive the old
+ *   one, and hand the new session id to this tool.
+ *   This tool does not touch the engine —— it only makes sure the "three-place sync at the
+ *   file level" never misses a spot.
  *
- * ★ 四步（缺任何一步都不算換完）：
- *   ① 把進度／下一步／卡點覆蓋寫進 §〇        ← 這就是交接
- *   ② 新建會話 + 舊會話歸檔                  ← 引擎端
- *   ③ 同步三處（新會話 id）                   ← ★ 引擎端做完立刻呼叫本工具
- *   ④ 自檢（check + 三處一致）                ← 本工具
+ * ★ Four steps (the switch is not done unless all four happen):
+ *   ① overwrite the progress / next step / blockers into §0   ← this is the handover
+ *   ② create the new session + archive the old one             ← engine side
+ *   ③ sync the three places (the new session id)               ← ★ call this tool right after the engine side is done
+ *   ④ self-check (check + the three places agree)              ← this tool
  *
- * ★ 為什麼「同步三處」要機械化：
- *   少同步任何一處的症狀都一樣（切場景像換了個人），但根因不同——
- *   所以要三處一起對，不要靠症狀去猜是哪一處漏了。
+ * ★ Why "syncing three places" has to be mechanical:
+ *   missing any one of them has the same symptom (switching scene feels like switching
+ *   people), but the root cause differs —— so all three are checked together instead of
+ *   guessing from the symptom which one was missed.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -51,8 +55,9 @@ const memFile = path.join(dir, rules.memoryFile)
 function inspectSec0 (body) {
   const subs = rules.sec0Subsections || []
   const missing = subs.filter((s) => !body.includes(s))
-  // 「下一步」有沒有實質內容（不能只有空項目符號或佔位）
-  // ★ 用逐行掃描，不用 regex：lookahead 會在標題行當下就成立，只抓到標題本身。
+  // Does "next steps" have real content (not just an empty bullet or a placeholder)?
+  // ★ Line-by-line scanning, not a regex: a lookahead succeeds right at the heading line, so
+  //   it would only ever capture the heading itself.
   let hasNext = false
   const head = (rules.sec0Subsections || []).find((s) => s.includes('4)')) || '### 4) next steps'
   const lines = body.split('\n')
@@ -81,7 +86,7 @@ function readIndexSession (indexPath, name) {
     const c = t.replace(/^\|/, '').replace(/\|$/, '').split('|').map((s) => s.trim().replace(/`/g, ''))
     if (c.length < 7) continue
     if (!/^[a-z0-9-]+$/.test(c[0])) continue
-    // 場景 id（`demo`）或會話名（`demo-scene`）都算命中
+    // A hit by scene id (`demo`) or by session name (`demo-scene`) both count
     if (c[0] === name || c[3] === name || c[2] === name) return { id: c[0], sessionId: c[4], card: c[5] }
   }
   return null
@@ -90,10 +95,11 @@ function readIndexSession (indexPath, name) {
 /** The sessionId in the scene config (engine-side panel json). */
 function readConfigSession (name, sceneId) {
   const cands = []
-  // repo 端示範用 場景/<名>/scene-config.json
+  // The repo-side demo uses scenes/<name>/scene-config.json
   cands.push(path.join(dir, rules['sceneConfigFile'] || 'scene-config.json'))
-  // 引擎端：<根>/scenarios/<場景id>.json 或 <根>/外殼/scenarios/<場景id>.json
-  // ★ 檔名是**場景 id**（英文 kebab-case），不是場景名 —— 用場景名找會找不到。
+  // The engine side: <root>/scenarios/<scene-id>.json or <root>/shell/scenarios/<scene-id>.json
+  // ★ The file name is the **scene id** (English kebab-case), not the scene name —— looking it
+  //   up by scene name finds nothing.
   if (sceneId) {
     cands.push(path.join(root, 'scenarios', sceneId + '.json'))
     cands.push(path.join(root, 'shell', 'scenarios', sceneId + '.json'))
@@ -116,7 +122,7 @@ function readConfigSession (name, sceneId) {
 /** The handover signature in §0 (which session wrote it). */
 function readSignature (body) {
   const m = body.match(/This handover was written by session\s*([A-Za-z0-9_-]+)\s*on\s*([\d-]+)/)
-  return m ? { sessionId: m[1], 日期: m[2] } : null
+  return m ? { sessionId: m[1], date: m[2] } : null
 }
 
 function cmdPlan () {
@@ -125,14 +131,14 @@ function cmdPlan () {
   console.log('═══ Session Switch Plan · ' + sceneName + ' ═══')
   console.log('')
 
-  // ① 場景存在
+  // ① the scene exists
   if (!exists(dir)) {
     console.log('  ✗ Scene directory does not exist: ' + dir)
     return 1
   }
   console.log('  ✓ Scene directory: ' + path.relative(root, dir))
 
-  // ② §₀ 齊不齊、有沒有下一步
+  // ② is §0 complete, is there a next step
   if (!exists(memFile)) {
     console.log('  ✗ Missing ' + rules.memoryFile + ' (run init)')
     return 1
@@ -152,7 +158,7 @@ function cmdPlan () {
     console.log('  ✓ §0 has next steps')
   }
 
-  // ④ §₀ 現在就已經超紅線？⇒ 換會話寫署名後只會更大，先擋住
+  // ④ is §0 already over the red line? ⇒ writing the signature after the switch only makes it bigger, so block first
   const sec0Now = (() => {
     const ls = body.split('\n')
     const s = ls.findIndex((l) => l.startsWith('## §0'))
@@ -167,7 +173,7 @@ function cmdPlan () {
   if (sec0Now) {
     const sz = Buffer.byteLength(sec0Now)
     const max = rules.sec0MaxBytes || 4096
-    // 署名會再加幾十字 ⇒ 預留一點餘額
+    // The signature adds a few dozen characters ⇒ leave a little headroom
     const headroom = 80
     if (sz + headroom > max) {
       console.log('  ✗ §0 is now ' + sz + ' B; writing the signature after the switch would exceed the hard limit of ' + max + ' B')
@@ -178,7 +184,7 @@ function cmdPlan () {
     }
   }
 
-  // ③ 三處目前的會話 id
+  // ③ the current session id in the three places
   const indexPath = resolveIndexPath(root)
   const ident = readIndexSession(indexPath, sceneName)
   const cfg = readConfigSession(sceneName, ident?.id)
@@ -191,7 +197,7 @@ function cmdPlan () {
   if (!cfg) warns.push('Cannot read sessionId from the scene config (engine-side panel json is not where expected)')
   if (!ident) warns.push('This scene is not in the identity index')
 
-  // ④ 引擎端要做的事
+  // ④ what the engine side has to do
   console.log('')
   console.log('  What the engine side must do (this repo does not touch the engine): ')
   console.log('    a. Create a new session (title = scene name, cwd = scene directory)')
@@ -251,8 +257,9 @@ function cmdCheck () {
   console.log('  Three session ids: ')
   for (const [label, v] of three) console.log('    ' + label + ' : ' + (v || ' (none)'))
 
-  // 一致性 —— ★ 三處都必須有值，且必須是同一個 id。
-  //   「缺一處」也算不一致：少同步一處的症狀跟同步錯了完全一樣。
+  // Consistency —— ★ all three places must have a value, and it must be the same id.
+  //   "one place missing" also counts as inconsistent: the symptom of missing one place is
+  //   exactly the same as syncing the wrong one.
   const vals = three.map((x) => x[1]).filter(Boolean)
   const uniq = [...new Set(vals)]
   if (newId) {
@@ -273,7 +280,7 @@ function cmdCheck () {
     }
   }
 
-  // §₀ 紅線
+  // the §0 red line
   const sec0 = (() => {
     const ls = body.split('\n')
     const s = ls.findIndex((l) => l.startsWith('## §0'))
@@ -292,7 +299,7 @@ function cmdCheck () {
     else ok.push('§0 ' + sz + ' B')
   }
 
-  // check 也要過
+  // the check must pass too
   console.log('')
   console.log('  Scene check: ')
   try {
