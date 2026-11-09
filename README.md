@@ -106,6 +106,8 @@ scene-memory-architecture/
 │   ├── 6-two-memory-systems.md      ★ scene memory = ledger, semantic memory = wiki
 │   ├── 7-dispatch-and-recovery-interface.md  the contract between the repo and the engine
 │   ├── 8-cross-scene-dispatch.md     ★ scene-to-scene dispatch (mailbox and routing)
+│   ├── 9-scene-granularity-and-routing.md  what breaks first when scenes multiply
+│   ├── 10-capability-scene-plan.md   worked plan for the "memoryless scene" type
 │   └── README.md
 ├── 01-architecture-overview/
 │   ├── 1-topology-overview.md           seven layers + who reads whom / who writes whom
