@@ -33,7 +33,7 @@
 <text x="48" y="88" font-size="16" class="b">Nodes = which layer; edges = who reads/writes whom</text>
 <text x="1224" y="88" font-size="15" fill="#94a3b8" text-anchor="end">※ Layer no. = ownership level (see overview.md) | Main flow L0 → L2 → L1 → L3 ↓ (C6 receipt excepted)</text>
 
-<!-- L0 全域憲法 -->
+<!-- L0 Global Constitution -->
 <rect x="440" y="105" width="400" height="92" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="440" y="105" width="6" height="92" rx="3" fill="#2563eb"/>
 <text x="464" y="139" font-size="21" class="t">L0 Global constitution</text>
@@ -42,7 +42,7 @@
 <path d="M640 197 V225" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arB)"/>
 <text x="654" y="218" font-size="15" class="cap" fill="#2563eb">C1 injection (every turn)</text>
 
-<!-- L2 場景私有層 -->
+<!-- L2 Scene Private Layer -->
 <rect x="440" y="225" width="400" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="440" y="225" width="6" height="240" rx="3" fill="#7c3aed"/>
 <text x="464" y="255" font-size="21" class="t">L2 Scene private layer</text>
@@ -77,7 +77,7 @@
 </g>
 <text x="464" y="456" font-size="15" fill="#7c3aed" font-weight="600">⛔ Write only your own; others: request only</text>
 
-<!-- 左上：邊界是事實 -->
+<!-- Top left: the boundary is a fact -->
 <rect x="56" y="225" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="56" y="225" width="6" height="240" rx="3" fill="#0284c7"/>
 <text x="80" y="255" font-size="19" class="t">Boundary = fact, not promise</text>
@@ -90,7 +90,7 @@
 <text x="80" y="440" font-size="15" class="b">not by asking via prompts.</text>
 <path d="M386 300 H434" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arS)"/>
 
-<!-- 右上：git 倉庫 -->
+<!-- Top right: git repository -->
 <rect x="894" y="225" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="894" y="225" width="6" height="240" rx="3" fill="#b45309"/>
 <text x="918" y="255" font-size="19" class="t">Each scene = one git repo</text>
@@ -107,14 +107,14 @@
 <path d="M640 465 V500" stroke="#059669" stroke-width="2.5" marker-end="url(#arG)"/>
 <text x="654" y="489" font-size="15" class="cap" fill="#059669">C4 skill visibility · project root</text>
 
-<!-- L1 共享層 -->
+<!-- L1 Shared Layer -->
 <rect x="440" y="500" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="440" y="500" width="6" height="100" rx="3" fill="#059669"/>
 <text x="464" y="530" font-size="21" class="t">L1 Shared layer</text>
 <text x="464" y="556" font-size="16" class="b">Index · board · todo · conflicts · workflows</text>
 <text x="464" y="582" font-size="15" fill="#059669" font-weight="600">The only legal cross-scene channel</text>
 
-<!-- 左下：單一真源 -->
+<!-- Bottom left: single source of truth -->
 <rect x="56" y="500" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="56" y="500" width="6" height="240" rx="3" fill="#7c3aed"/>
 <text x="80" y="530" font-size="19" class="t">Single source of truth rule</text>
@@ -127,7 +127,7 @@
 <text x="80" y="714" font-size="15" class="b">where am I / next step / blockers</text>
 <path d="M386 550 H434" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arP)"/>
 
-<!-- 右下：機械不變量 -->
+<!-- Bottom right: mechanical invariants -->
 <rect x="894" y="500" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="894" y="500" width="6" height="240" rx="3" fill="#b45309"/>
 <text x="918" y="530" font-size="19" class="t">Mechanical invariants</text>
@@ -146,14 +146,14 @@
 <path d="M810 640 V606" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arP)"/>
 <text x="796" y="626" font-size="14" class="cap" fill="#7c3aed" text-anchor="end">C6 receipt (three-part)</text>
 
-<!-- L3 工具層 -->
+<!-- L3 Tool Layer -->
 <rect x="440" y="640" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
 <rect x="440" y="640" width="6" height="100" rx="3" fill="#0284c7"/>
 <text x="464" y="670" font-size="21" class="t">L3 Execution and tool layer</text>
 <text x="464" y="696" font-size="16" class="b">check / stamp / handover · session · dispatch</text>
 <text x="464" y="722" font-size="15" fill="#0284c7" font-weight="600">★ Tools live outside the data</text>
 
-<!-- L2′ 執行層（主控端私有） -->
+<!-- L2′ Execution Layer (private to the orchestrator) -->
 <path d="M640 740 V768" stroke="#b45309" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arA)"/>
 <text x="654" y="762" font-size="14" class="cap" fill="#b45309">C9 execution state is private</text>
 <rect x="440" y="768" width="400" height="80" rx="14" fill="#fffdf5" stroke="#fcd34d" filter="url(#sh)"/>
@@ -172,7 +172,7 @@
 <text x="464" y="908" font-size="21" class="t">L4 Audit layer · L5 Archive layer</text>
 <text x="464" y="936" font-size="16" class="b">git log holds all · snapshot · append only</text>
 
-<!-- 底部總結 -->
+<!-- Bottom summary -->
 <rect x="56" y="985" width="1168" height="140" rx="14" fill="#0f172a" filter="url(#sh)"/>
 <text x="640" y="1033" font-size="24" fill="#ffffff" font-weight="700" text-anchor="middle">Accumulation needs a carrier; dispatch returns the artifact; receipt must be verifiable</text>
 <text x="640" y="1075" font-size="18" fill="#cbd5e1" text-anchor="middle">Capability is not in the model, it is in the accumulation — intelligence comes from the model, skill is grown by you</text>

@@ -23,7 +23,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 WORK="$(mktemp -d)"
 WB="$WORK/wb"
 EX="$HERE/run-workflow.mjs"
-DISPATCH_TOOL="${DSH_DISPATCH_TOOL:-$HOME/.DSH/工作台/tool/派單.mjs}"
+DISPATCH_TOOL="${DSH_DISPATCH_TOOL:-$HOME/.DSH/工作台/工具/派單.mjs}"
 
 SKIP_ENGINE=0
 [ "${1:-}" = "--skip-engine-tests" ] && SKIP_ENGINE=1
@@ -167,14 +167,14 @@ else
     echo
   else
     SCENE="知識庫"
-    SCENE_DIR="$HOME/.DSH/工作台/scene/$SCENE"
+    SCENE_DIR="$HOME/.DSH/工作台/場景/$SCENE"
     if [ ! -d "$SCENE_DIR" ]; then
       echo "【G6–G8】跳過：找不到scene目錄 $SCENE_DIR"
       echo
     else
       # 找出該場景的 session id
       SID="$(node -e "
-const fs=require('fs');const p='$HOME/.DSH/工作台/shell/scenarios';
+const fs=require('fs');const p='$HOME/.DSH/工作台/外殼/scenarios';
 for(const f of fs.readdirSync(p)){if(!f.endsWith('.json')||f.startsWith('_'))continue;
 const j=JSON.parse(fs.readFileSync(p+'/'+f,'utf8'));
 if(j&&j.name==='$SCENE'&&!j.view){const s=(j.panels||[]).find(x=>x.sessionId);if(s){console.log(s.sessionId);break}}}
