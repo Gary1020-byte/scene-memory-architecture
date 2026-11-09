@@ -1,0 +1,26 @@
+{
+  "_note": "Scene definition (panel) template. Place it in the engine-side scene directory; the filename must equal <scene-id>.json. ★ The name field must match the scene directory name —— the validation tool uses it to look the directory up. Leave sessionId empty; fill it in once the session exists.",
+  "id": "<scene-id>",
+  "name": "<scene-name>",
+  "description": "<one line describing what this scene does>",
+  "layout": "grid",
+  "theme": "dark",
+  "panels": [
+    {
+      "id": "<panel-id>-ai",
+      "title": "AI·<scene-name>",
+      "sub": "",
+      "type": "harness",
+      "sessionTitle": "<scene-name>",
+      "sessionId": "",
+      "pinTarget": [
+        "<scene-name>"
+      ],
+      "col": 1,
+      "row": 1,
+      "w": 1,
+      "h": 5
+    }
+  ],
+  "first": false
+}

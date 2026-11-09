@@ -1,0 +1,22 @@
+{
+  "_description": "★ The repo-side counterpart of the engine-side scene config (panel json). The engine side uses <root>/scenarios/<scene-id>.json; this copy lives in the scene directory so the repo's tools can read sessionId and verify the 'three-place sync on session switch'.",
+  "id": "demo",
+  "name": "demo-scene",
+  "description": "Demo: what a standard scene looks like.",
+  "layout": "grid",
+  "theme": "dark",
+  "panels": [
+    {
+      "id": "demo-ai",
+      "title": "AI·demo-scene",
+      "type": "harness",
+      "sessionTitle": "demo-scene",
+      "sessionId": "session-demo0001",
+      "col": 1,
+      "row": 1,
+      "w": 1,
+      "h": 5
+    }
+  ],
+  "first": false
+}

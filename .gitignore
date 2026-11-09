@@ -18,37 +18,37 @@ __pycache__/
 *.log
 *.tmp
 
-# ⛔ 本仓库是「公开方法 + 纯壳模板」，不是 DSH 安装包
-# 下面这些一律不进公开仓：运行数据、会话、凭据、模型、备份、工作区
+# ⛔ This repo is "public method + pure shell templates", not a DSH installer.
+# Nothing below belongs in the public repo: run data, sessions, credentials, models, backups, workspaces.
 
-# 会话与运行时数据
+# Sessions and runtime data
 /.dsh/
 sessions/
 attachments/
-会话档案/
-工作区/
-备份/
+session-archive/
+workspaces/
+backups/
 
-# 依赖与构建产物
+# Dependencies and build artifacts
 dist/
 build/
 out/
 *.tgz
 
-# 模型与体积大的二进制
+# Models and large binaries
 models/
 model/
 *.gguf
 *.safetensors
 *.onnx
 
-# 日志与数据库
+# Logs and databases
 logs/
 *.db
 *.sqlite
 *.sqlite3
 
-# 密钥与本地配置
+# Keys and local config
 .env
 .env.*
 *credential*
@@ -58,21 +58,26 @@ logs/
 cloudflare.env
 github.env
 
-# 系统与编辑器垃圾
+# OS and editor junk
 Thumbs.db
 desktop.ini
 .vscode/
 .idea/
 _tmp/
-临时/
+tmp/
 
-# ⛔ 示範工作台內的場景各自是獨立 git 倉庫 —— 但示範刻意不放真的 git 倉庫
-# （巢狀且無 commit 的 git 倉庫會讓 git add -A 直接失敗：git 當它是 submodule）
-# 所以示範的 .git 是「說明檔」而非 git 倉庫，必須跟著進公開倉。
-# 見 04-模板/示範工作台/.git 的內容。
+# ⛔ Each scene inside the demo workbench is its own git repository — but the demo
+# deliberately does NOT ship a real git repository.
+# (A nested git repo with no commits makes `git add -A` fail outright: git treats
+# it as a submodule.)
+# So the demo's `.git` is an "explanation file" rather than a git repo, and it MUST
+# be committed to the public repo. See the contents of
+# 04-templates/demo-workbench/.git-marker.
 #
-# 真的用起來時要記得：`git init` 出真目錄，別只留說明檔。
+# When you actually use this: run `git init` to create a real directory — do not
+# leave just the explanation file.
 
-# 示範工作台的執行痕跡（工具跑過會產生歸檔快照與專案記憶）
-04-模板/示範工作台*/場景/*/專案記憶/*.md
-04-模板/示範工作台*/場景/*/歸檔/*.md
+# Execution traces from the demo workbench (running the tools produces archive
+# snapshots and project memory files)
+04-templates/demo-workbench*/scenes/*/project-memory/*.md
+04-templates/demo-workbench*/scenes/*/archive/*.md

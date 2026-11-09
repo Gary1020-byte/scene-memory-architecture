@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1155" viewBox="0 0 1280 1155">
+<defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#eef2f7" stroke-width="1"/>
+    </pattern>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.06"/>
+    </filter>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker>
+    <marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2563eb"/></marker>
+    <marker id="arP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7c3aed"/></marker>
+    <marker id="arG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#059669"/></marker>
+    <marker id="arS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#0284c7"/></marker>
+    <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#b45309"/></marker>
+    <style>
+      text { font-family: 'Microsoft YaHei','PingFang SC','Noto Sans SC','WenQuanYi Zen Hei',sans-serif; }
+      .t { font-weight: 700; fill: #0f172a; }
+      .b { fill: #475569; }
+      .m { fill: #94a3b8; }
+      .cap { font-weight: 600; }
+      .sep { stroke: #e2e8f0; stroke-width: 1; }
+    </style>
+  </defs>
+<rect width="1280" height="1155" fill="#f8fafc"/>
+<rect width="1280" height="1155" fill="url(#grid)"/>
+<text x="48" y="58" font-size="34" class="t">Scene Memory Architecture · Topology Overview</text>
+<text x="48" y="88" font-size="16" class="b">Nodes = which layer; edges = who reads/writes whom</text>
+<text x="1224" y="88" font-size="15" fill="#94a3b8" text-anchor="end">※ Layer no. = ownership level (see overview.md) | Main flow L0 → L2 → L1 → L3 ↓ (C6 receipt excepted)</text>
+
+<!-- L0 全域憲法 -->
+<rect x="440" y="105" width="400" height="92" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="105" width="6" height="92" rx="3" fill="#2563eb"/>
+<text x="464" y="139" font-size="21" class="t">L0 Global constitution</text>
+<text x="464" y="165" font-size="16" class="b">Memory in files · Scene sovereignty</text>
+<text x="464" y="186" font-size="14" fill="#b45309" font-weight="600">· One dispatch = one receipt · no artifact = waste</text>
+<path d="M640 197 V225" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arB)"/>
+<text x="654" y="218" font-size="15" class="cap" fill="#2563eb">C1 injection (every turn)</text>
+
+<!-- L2 場景私有層 -->
+<rect x="440" y="225" width="400" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="225" width="6" height="240" rx="3" fill="#7c3aed"/>
+<text x="464" y="255" font-size="21" class="t">L2 Scene private layer</text>
+<text x="464" y="279" font-size="16" class="b">Each scene = one git repo (.git = boundary)</text>
+
+<g>
+  <rect x="464" y="292" width="112" height="148" rx="10" fill="#faf5ff" stroke="#c4b5fd"/>
+  <path d="M474 292H566a10 10 0 0 1 10 10v6H464v-6a10 10 0 0 1 10-10z" fill="#7c3aed"/>
+  <text x="520" y="313" font-size="15" fill="#ffffff" font-weight="700" text-anchor="middle">scene A</text>
+  <text x="476" y="340" font-size="14" class="b">· AGENTS.md</text>
+  <text x="476" y="364" font-size="14" class="b">· skills</text>
+  <text x="476" y="388" font-size="14" class="b">· §0 handover</text>
+  <text x="476" y="412" font-size="14" class="b">· project mem</text>
+</g>
+<g>
+  <rect x="584" y="292" width="112" height="148" rx="10" fill="#faf5ff" stroke="#c4b5fd"/>
+  <path d="M594 292H686a10 10 0 0 1 10 10v6H584v-6a10 10 0 0 1 10-10z" fill="#7c3aed"/>
+  <text x="640" y="313" font-size="15" fill="#ffffff" font-weight="700" text-anchor="middle">scene B</text>
+  <text x="596" y="340" font-size="14" class="b">· AGENTS.md</text>
+  <text x="596" y="364" font-size="14" class="b">· skills</text>
+  <text x="596" y="388" font-size="14" class="b">· §0 handover</text>
+  <text x="596" y="412" font-size="14" class="b">· project mem</text>
+</g>
+<g>
+  <rect x="704" y="292" width="112" height="148" rx="10" fill="#faf5ff" stroke="#c4b5fd"/>
+  <path d="M714 292H806a10 10 0 0 1 10 10v6H704v-6a10 10 0 0 1 10-10z" fill="#7c3aed"/>
+  <text x="760" y="313" font-size="15" fill="#ffffff" font-weight="700" text-anchor="middle">scene C</text>
+  <text x="716" y="340" font-size="14" class="b">· AGENTS.md</text>
+  <text x="716" y="364" font-size="14" class="b">· skills</text>
+  <text x="716" y="388" font-size="14" class="b">· §0 handover</text>
+  <text x="716" y="412" font-size="14" class="b">· project mem</text>
+</g>
+<text x="464" y="456" font-size="15" fill="#7c3aed" font-weight="600">⛔ Write only your own; others: request only</text>
+
+<!-- 左上：邊界是事實 -->
+<rect x="56" y="225" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="56" y="225" width="6" height="240" rx="3" fill="#0284c7"/>
+<text x="80" y="255" font-size="19" class="t">Boundary = fact, not promise</text>
+<text x="80" y="288" font-size="15" class="b">Engine walks up from cwd to first .git</text>
+<text x="80" y="312" font-size="15" class="b">= project root; loads only this tree</text>
+<text x="80" y="336" font-size="15" class="b">Other scenes are out of scan scope</text>
+<text x="80" y="368" font-size="14" fill="#0284c7" font-weight="600">Model can't see others ⇒ no crossing</text>
+<line x1="80" y1="388" x2="362" y2="388" class="sep"/>
+<text x="80" y="416" font-size="15" class="b">Use structure to eliminate errors,</text>
+<text x="80" y="440" font-size="15" class="b">not by asking via prompts.</text>
+<path d="M386 300 H434" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arS)"/>
+
+<!-- 右上：git 倉庫 -->
+<rect x="894" y="225" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="894" y="225" width="6" height="240" rx="3" fill="#b45309"/>
+<text x="918" y="255" font-size="19" class="t">Each scene = one git repo</text>
+<text x="918" y="288" font-size="15" class="b">.git/ = scene boundary + audit layer</text>
+<text x="918" y="312" font-size="15" class="b">Each change: diff, account, rollback</text>
+<text x="918" y="336" font-size="15" class="b">Sovereignty + own repo = no clashes</text>
+<text x="918" y="368" font-size="14" fill="#b45309" font-weight="600">Memory = a version-controlled asset</text>
+<line x1="918" y1="388" x2="1200" y2="388" class="sep"/>
+<text x="918" y="416" font-size="15" class="b">Project memory: one per project ≤8KB</text>
+<text x="918" y="440" font-size="15" class="b">Main file ≤ 25 KB; over → archive</text>
+<path d="M894 300 H846" stroke="#b45309" stroke-width="2.5" marker-end="url(#arA)"/>
+
+<!-- C4 -->
+<path d="M640 465 V500" stroke="#059669" stroke-width="2.5" marker-end="url(#arG)"/>
+<text x="654" y="489" font-size="15" class="cap" fill="#059669">C4 skill visibility · project root</text>
+
+<!-- L1 共享層 -->
+<rect x="440" y="500" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="500" width="6" height="100" rx="3" fill="#059669"/>
+<text x="464" y="530" font-size="21" class="t">L1 Shared layer</text>
+<text x="464" y="556" font-size="16" class="b">Index · board · todo · conflicts · workflows</text>
+<text x="464" y="582" font-size="15" fill="#059669" font-weight="600">The only legal cross-scene channel</text>
+
+<!-- 左下：單一真源 -->
+<rect x="56" y="500" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="56" y="500" width="6" height="240" rx="3" fill="#7c3aed"/>
+<text x="80" y="530" font-size="19" class="t">Single source of truth rule</text>
+<text x="80" y="562" font-size="15" class="b">Every thing belongs to one layer,</text>
+<text x="80" y="586" font-size="15" class="b">source of truth in one place only;</text>
+<text x="80" y="610" font-size="15" class="b">everywhere else holds only pointers.</text>
+<text x="80" y="642" font-size="14" fill="#7c3aed" font-weight="600">Break it ⇒ board splits, numbers clash</text>
+<line x1="80" y1="662" x2="362" y2="662" class="sep"/>
+<text x="80" y="690" font-size="15" class="b">§0 answers four: who am I /</text>
+<text x="80" y="714" font-size="15" class="b">where am I / next step / blockers</text>
+<path d="M386 550 H434" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arP)"/>
+
+<!-- 右下：機械不變量 -->
+<rect x="894" y="500" width="330" height="240" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="894" y="500" width="6" height="240" rx="3" fill="#b45309"/>
+<text x="918" y="530" font-size="19" class="t">Mechanical invariants</text>
+<text x="918" y="562" font-size="15" class="b">· §0 ≤ 4 KB hard limit</text>
+<text x="918" y="586" font-size="15" class="b">· locator card sha256 fingerprint</text>
+<text x="918" y="610" font-size="15" class="b">· a missing subsection is blocked</text>
+<text x="918" y="642" font-size="14" fill="#b45309" font-weight="600">fail-closed: blocks, does not warn</text>
+<line x1="918" y1="662" x2="1200" y2="662" class="sep"/>
+<text x="918" y="690" font-size="15" class="b">The validator must be able to prove</text>
+<text x="918" y="714" font-size="15" class="b">"it fails when it should fail"</text>
+<path d="M894 550 H846" stroke="#b45309" stroke-width="2.5" marker-end="url(#arA)"/>
+
+<!-- C5 / C6 -->
+<path d="M470 600 V640" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arS)"/>
+<text x="484" y="626" font-size="14" class="cap" fill="#0284c7">C5 dispatch (RPC / message)</text>
+<path d="M810 640 V606" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arP)"/>
+<text x="796" y="626" font-size="14" class="cap" fill="#7c3aed" text-anchor="end">C6 receipt (three-part)</text>
+
+<!-- L3 工具層 -->
+<rect x="440" y="640" width="400" height="100" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="640" width="6" height="100" rx="3" fill="#0284c7"/>
+<text x="464" y="670" font-size="21" class="t">L3 Execution and tool layer</text>
+<text x="464" y="696" font-size="16" class="b">check / stamp / handover · session · dispatch</text>
+<text x="464" y="722" font-size="15" fill="#0284c7" font-weight="600">★ Tools live outside the data</text>
+
+<!-- L2′ 執行層（主控端私有） -->
+<path d="M640 740 V768" stroke="#b45309" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arA)"/>
+<text x="654" y="762" font-size="14" class="cap" fill="#b45309">C9 execution state is private</text>
+<rect x="440" y="768" width="400" height="80" rx="14" fill="#fffdf5" stroke="#fcd34d" filter="url(#sh)"/>
+<rect x="440" y="768" width="6" height="80" rx="3" fill="#b45309"/>
+<text x="464" y="798" font-size="21" class="t">L2′ Execution layer (private)</text>
+<text x="464" y="822" font-size="15" class="b">runs/&lt;run-id&gt;/: state · carry chain (artifact travels down)</text>
+<text x="464" y="841" font-size="13" fill="#b45309" font-weight="600">★ Plan in L1 (shared), state here (private)</text>
+
+<!-- C7 / C8 -->
+<path d="M640 848 V878" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<text x="654" y="868" font-size="15" class="cap" fill="#64748b">C10 audit (git log)</text>
+
+<!-- L4 / L5 -->
+<rect x="440" y="878" width="400" height="80" rx="14" fill="#ffffff" stroke="#e2e8f0" filter="url(#sh)"/>
+<rect x="440" y="878" width="6" height="80" rx="3" fill="#64748b"/>
+<text x="464" y="908" font-size="21" class="t">L4 Audit layer · L5 Archive layer</text>
+<text x="464" y="936" font-size="16" class="b">git log holds all · snapshot · append only</text>
+
+<!-- 底部總結 -->
+<rect x="56" y="985" width="1168" height="140" rx="14" fill="#0f172a" filter="url(#sh)"/>
+<text x="640" y="1033" font-size="24" fill="#ffffff" font-weight="700" text-anchor="middle">Accumulation needs a carrier; dispatch returns the artifact; receipt must be verifiable</text>
+<text x="640" y="1075" font-size="18" fill="#cbd5e1" text-anchor="middle">Capability is not in the model, it is in the accumulation — intelligence comes from the model, skill is grown by you</text>
+<text x="640" y="1107" font-size="15" fill="#94a3b8" text-anchor="middle">Memory lives in files, not in sessions — this is the precondition for accumulation to happen</text>
+</svg>

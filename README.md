@@ -1,240 +1,258 @@
-# 場景記憶架構
+# Scene Memory Architecture
 
-> ### 能力不在模型裡，在累積裡。
-> > 聰明是模型給的，本事是自己養的。
+> ### Capability is not in the model, it is in the accumulation.
+> > Intelligence is given by the model; skill is grown by you.
 
-> 🗺️ **先看總綱（一圖看懂它怎麼運轉）**：[`總綱.md`](總綱.md) —— 累積怎麼發生／記憶放哪／誰能寫／活怎麼派
+> 🗺️ **Start with the overview (one diagram, how it runs)**: [`overview.md`](overview.md) — how accumulation happens / where memory lives / who may write / how work is dispatched
 
-一套**多場景 AI 工作台的場景記憶方法論**：
-主流多 Agent 框架靠「訊息傳遞」把工作串起來，人類看不清也插不進手；
-這套架構把工作單位換成**看得見、能累積的檔案**——
-**場景**是一件事的長期本體，**工作流**是場景的編程，
-而每一次做完的活，必須帶走「下次能用的東西」。
+A **methodology for scene memory in a multi-scene AI workbench**:
+Mainstream multi-agent frameworks chain work together through "message passing", where humans can neither see clearly nor get their hands in;
+this architecture replaces the unit of work with **files you can see and that accumulate** —
+a **scene** is the long-term substrate of one kind of work, a **workflow** is the programming of scenes,
+and every finished job must carry away "something usable next time".
 
-這裡面有：方法論文件、規格與模板、一支可執行的校驗工具，
-以及一份**維護手冊**——寫給「三個月後要回來改架構」的那個自己。
+Inside: methodology docs, specs and templates, one executable validation tool,
+and a **maintenance manual** — written for that future version of you who comes back to change the architecture three months from now.
 
-> **關於倉庫名**：專案名是「**場景記憶架構**」，文件與程式碼內文**全部是中文**。
-> 但 GitHub 的倉庫網址（slug）只接受英數字元——實測改成中文會被清成空字串、
-> 網址變成 `/-`，無法使用。因此網址保留 `scene-memory-architecture`，
-> 專案名稱與中文內容則完整保留。
-> （改名的指令是：`gh repo rename <新名> --repo <owner>/<舊名> --yes`）
+> **About the repository name**: the project name is "**Scene Memory Architecture**", and the content of the docs and code is **fully in English**.
+> But the GitHub repository URL (slug) only accepts alphanumeric characters — in testing, a Chinese slug is cleared to an empty string,
+> and the URL becomes `/-`, which is unusable. Therefore the URL keeps `scene-memory-architecture`;
+> the project name and the English content are fully preserved.
+> (The rename command is: `gh repo rename <new-name> --repo <owner>/<old-name> --yes`)
 
 ---
 
-## 它解的是什麼問題
+## What problem it solves
 
-主流多 Agent 框架把能力假設成**模型聰明程度的函數**。這在單次任務沒問題，
-在「同一類活要反覆做很多次」的時候出問題——而那正是多 Agent 系統存在的理由。
+Mainstream multi-agent frameworks assume capability is **a function of how smart the model is**. That is fine for one-off tasks;
+it breaks down when "the same kind of work has to be done many times over" — which is exactly why multi-agent systems exist.
 
-| 症狀 | 根因 |
+| symptom | root cause |
 |---|---|
-| **sub-agent 每次都從零開始** | 它沒有事件歷史，只有可編輯的角色設定；改完設定，累積不出經驗 |
-| **它的經驗只活在當輪對話裡** | session 一結束就蒸發，**沒有任何地方接得住** |
-| **skill 愈堆愈亂**，Agent 不知道該叫哪個 | skill 是**全域的清單**，不是**情境的答案** |
+| **a sub-agent starts from zero every time** | it has no event history, only an editable role setting; change the setting and still no experience accumulates |
+| **its experience lives only in the current conversation** | it evaporates when the session ends, and **nothing anywhere catches it** |
+| **skills pile up into a mess** and the agent does not know which to call | a skill is a **global list**, not **the answer to a situation** |
 
-解法不是「換更聰明的模型」，是**給能力一個能被改寫、可被版本控制的載體**：
+The fix is not "a smarter model", it is **giving capability a carrier that can be rewritten and version-controlled**:
 
 ```
-模型 ＝ 引擎（提供聰明）
-場景 ＝ 載體（提供累積）
+Model   = engine (provides intelligence)
+Scene   = carrier (provides accumulation)
 ```
 
-> **記憶在檔案裡，不在會話裡** —— 這是累積能發生的前提。
+> **Memory lives in files, not in the session** — this is the precondition for accumulation to happen.
 
 ---
 
-## 一句話
+## In one sentence
 
-> **累積要有載體，載體要能改寫；派單要帶回累積物，回執要能被驗收；串起來要有人看得見。**
+> **Accumulation needs a carrier, the carrier must be rewritable; a dispatch must carry accumulation back, a receipt must be verifiable; and the whole thing must be visible to a human.**
 
-會話可以隨時換，場景不會失憶。因為「這個場景現在幹到哪、欠誰的活、下一步是什麼」，
-從來不保存在任何一個 AI 的腦子裡，而是寫在磁碟上一份 **4 KB 的交接檔**。
+Sessions can be swapped at any time, scenes do not forget. Because "where is this scene now, who owes what, what is next"
+is never stored in any AI's head, but written to disk as a **4 KB handover file**.
 
 ---
 
-## 這是什麼／這不是什麼
+## What this is / what this is not
 
-| 是 | 不是 |
+| is | is not |
 |---|---|
-| 一套**方法**：怎麼設計累積的載體、怎麼劃邊界、怎麼派活、怎麼收回執、怎麼串成工作流 | 一個「裝完就能用」的軟體 |
-| 一份**規格**：目錄結構、檔案格式、紅線、檢查項，全部寫死成可對照的條文 | 一次性的成品，交付後就沒人維護 |
-| 一支**可執行工具**：拿來實測「該失敗時會不會失敗」 | 依賴特定引擎的整套工作台 |
-| 一份**維護手冊**：講清楚改哪裡、怎麼驗、怎麼回滾 | 流水帳（每篇都對應一個真實問題） |
+| a **method**: how to design an accumulation carrier, how to draw boundaries, how to dispatch work, how to collect receipts, how to chain into workflows | "install it and it just works" software |
+| a **spec**: directory structure, file formats, hard limits, check items — all written down as comparable clauses | a one-off deliverable nobody maintains after handover |
+| an **executable tool**: to test in practice "does it fail when it should fail" | a whole workbench tied to one specific engine |
+| a **maintenance manual**: exactly what to change, how to verify, how to roll back | a running commentary (every doc answers a real problem) |
 
-> ⚠️ **這不是安裝包。** 工具是**可執行的**，但它檢查的是「你放進來的檔案」，
-> 你的場景長什麼樣、幾個、叫什麼名字，全部由你決定。
+> ⚠️ **This is not an install package.** The tools are **executable**, but what they check is "the files you put in";
+> what your scenes look like, how many there are, and what they are named is entirely up to you.
 >
-> ⚠️ **這是引擎中立版。** 全文用「主控端」「臨時執行體」這類中性角色，
-> 不綁任何引擎。引擎專用版另開專案。
+> ⚠️ **This is the engine-neutral edition.** It uses neutral roles like "orchestrator" and "ephemeral executor"
+> throughout and binds to no engine. Engine-specific editions live in a separate project.
 
 ---
 
-## 板塊導航
+## Section navigation
 
-| # | 板塊 | 一句話 | 目錄 |
+| # | section | one line | directory |
 |---|---|---|---|
-| **00** | **核心機制** ★ | 累積為什麼要、場景怎麼劃、記憶怎麼放、活怎麼派、工作流怎麼串 —— 真正決定「三個月後亂不亂」的五套機制 | [`00-核心機制/`](00-核心機制/) |
-| **01** | **架構總覽** | 一張拓撲圖看完整套結構：誰在哪層、誰能寫誰、邊界畫在哪 | [`01-架構總覽/`](01-架構總覽/) |
-| **02** | **落地實作** | 規格（檔案長什麼樣）、校驗（怎麼擋）、**維護手冊**（怎麼改）、**場景戊規範**（怎麼開新場景）、**歸檔層**（聊天全文去哪）、**換會話**（怎麼換）、已知裂縫（還沒修的） | [`02-落地實作/`](02-落地實作/) |
-| **03** | **可執行工具** | 場景記憶校驗工具：init／stamp／交接／check／list，失敗會明確報錯 | [`03-可執行工具/`](03-可執行工具/) |
-| **04** | **模板** | 可直接拷貝：場景私有記憶、定位卡、身份卡、場景畫像、交接規則、派單格式、**工作流定義** | [`04-模板/`](04-模板/) |
-| **05** | **對照與選型** | **場景 vs 臨時執行體**、與 A2A 協定的差別、場景記憶 vs 語意記憶、什麼時候該選哪一套 | [`05-對照與選型/`](05-對照與選型/) |
+| **00** | **Core mechanisms** ★ | why accumulation matters, how scenes are drawn, where memory goes, how work is dispatched, how workflows chain — the five mechanisms that really decide "whether it is a mess three months from now" | [`00-core-mechanisms/`](00-core-mechanisms/) |
+| **01** | **Architecture overview** | one topology diagram for the whole structure: who is on which layer, who may write whom, where the boundaries are drawn | [`01-architecture-overview/`](01-architecture-overview/) |
+| **02** | **Implementation** | spec (what files look like), validation (how it blocks), **maintenance manual** (how to change), **Scene E spec** (how to open a new scene), **archive layer** (where the full chat goes), **session switch** (how to switch), known gaps (not yet fixed) | [`02-implementation/`](02-implementation/) |
+| **03** | **Executable tools** | scene memory validation tool: init／stamp／handover／check／list, fails with explicit errors | [`03-executable-tools/`](03-executable-tools/) |
+| **04** | **Templates** | directly copyable: scene private memory, locator card, identity card, scene portrait, handover rules, dispatch format, **workflow definition** | [`04-templates/`](04-templates/) |
+| **05** | **Comparisons and selection** | **scene vs ephemeral executor**, the difference from the A2A protocol, scene memory vs semantic memory, when to pick which | [`05-comparisons-and-selection/`](05-comparisons-and-selection/) |
 
-另外三份必讀：
+Three more must-reads:
 
-- [`總綱.md`](總綱.md) —— **一圖看懂**，全篇最短
-- [`新手必讀.md`](新手必讀.md) —— ⚠️ **動手前先看**：這是方法不是安裝包
-- [`更新清單.md`](更新清單.md) —— 每改一次架構就記一筆（維護用的帳本）
+- [`overview.md`](overview.md) — **one diagram**, the shortest doc in the repo
+- [`getting-started.md`](getting-started.md) — ⚠️ **read before you start**: this is a method, not an install package
+- [`changelog.md`](changelog.md) — one entry per architecture change (a ledger for maintenance)
 
 ---
 
-## 文件地圖
+## File map
 
 ```
-場景記憶架構/
-├── README.md                   ← 你在這裡
-├── 總綱.md                     ★ 一圖看懂（七層結構 / 累積迴圈）
-├── 新手必讀.md                 ← ⚠️ 動手前的門檻說明
-├── 更新清單.md                 ← 架構變更帳本
-├── 00-核心機制/
-│   ├── 一-累積.md              ★★ 主線：能力不在模型裡，在累積裡
-│   ├── 二-場景.md              ★ 一個場景＝累積的載體、邊界怎麼劃
-│   ├── 三-場景記憶.md          ★ 記憶怎麼放、§〇 交接、紅線怎麼定
-│   ├── 四-派單與回執.md         ★ 兩條通道、派單四件套、回執三件套
-│   ├── 五-工作流.md            ★★ 場景怎麼串成一條線、門檻、執行狀態
-│   └── 六-兩套記憶的分工.md      ★ 場景記憶＝帳本，語意記憶＝wiki
-├── 01-架構總覽/
-│   ├── 一-拓撲總覽.md           七層 + 誰讀誰 / 誰寫誰
-│   └── 配圖/拓撲-場景記憶架構.svg
-├── 02-落地實作/
-│   ├── 一-目錄與檔案規格.md      目錄結構、檔案格式、命名約定
-│   ├── 二-交接與校驗.md          換會話協議、fail-closed、指紋機制
-│   ├── 三-維護手冊.md          ★★ 改架構時的標準流程（回來維護看這篇）
-│   ├── 四-已知裂縫與待修.md      已定位但未修的問題（含修法）
-│   ├── 五-新增場景規範.md    ★★ 標準場景 10+3 規格 ＋ 十步流程（每步有驗收）
-│   ├── 六-歸檔層.md         ★★ 聊天全文的歸處：三層分工 ＋ 引擎匯出契約
-│   └── 七-換會話.md         ★★ 換會話＝一條有自檢的原子操作（四步＋三處同步）
-├── 引擎狀態.json                ← ★ 引擎端寫的狀態（已歸檔／釘住的會話）—— 校驗工具唯一的引擎依賴
-├── 03-可執行工具/
-│   ├── 工作台.mjs               ★ 共用模組（路徑解析 + YAML + 小節解析）
-│   ├── 場景記憶.mjs             校驗工具（可執行）
-│   ├── 新增場景.mjs             ★★ 建完整場景（骨架 + 六件套 + 索引登記）
-│   ├── 換會話.mjs               ★★ 換會話的前置檢查 ＋ 三處同步自檢
-│   ├── 會話檔案.mjs             ★★ 聊天全文歸檔層：抽出 ＋ 索引 ＋ 檢查
-│   ├── 回執校驗.mjs             ★ 回執三件套 + 可累積物落地驗收
-│   ├── 工作流校驗.mjs           ★ 工作流定義的機械檢查
-│   ├── 工作流執行.mjs           ★ 離線執行器（start/step/回執/resume/status）
-│   ├── 反例驗收.sh              15 項：證明該失敗時會失敗
-│   ├── 工作流驗收.sh            ★ 12 項：端到端跑通累積迴圈
-│   └── 讀我.md                 用法、退出碼、怎麼接到自己的目錄
-├── 04-模板/                    可直接拷貝的純殼
-│   ├── 場景私有記憶.md
-│   ├── 定位卡.md
-│   ├── 身份卡.md
-│   ├── 場景畫像.md
-│   ├── 交接規則.json            ★ 規則單一來源（紅線只在這裡定義一次）
-│   ├── 派單模板.md              ★ 回執三件套格式
-│   ├── 場景憲法模板.md          ★ 新場景的 AGENTS.md 模板
-│   ├── 專屬技能模板.md          ★ 新場景的 SKILL.md 模板
-│   ├── 場景定義模板.json        ★ 新場景的面板 json 模板
-│   ├── 工作流模板.md            ★ 工作流定義格式
-│   ├── 執行狀態模板.md          ★ 一次執行的私有狀態
-│   └── 交接串模板.md            ★ 累積物往下傳的載體
-├── 05-對照與選型/
-│   ├── 一-場景與臨時執行體.md    ★★ 場景 vs sub-agent：什麼時候用哪個
-│   ├── 二-與A2A協定的對照.md
-│   ├── 三-場景記憶與語意記憶.md
-│   └── 四-選型判據.md
+scene-memory-architecture/
+├── README.md                   ← you are here
+├── overview.md                     ★ one diagram (seven layers / the accumulation loop)
+├── getting-started.md                 ← ⚠️ the bar to clear before starting
+├── changelog.md                 ← the architecture change ledger
+├── 00-core-mechanisms/
+│   ├── 1-accumulation.md              ★★ main line: capability is not in the model, it is in the accumulation
+│   ├── 2-scene.md              ★ one scene = the carrier of accumulation, how boundaries are drawn
+│   ├── 3-scene-memory.md          ★ where memory goes, §0 handover, how the hard limits are set
+│   ├── 4-dispatch-and-receipt.md         ★ two channels, the dispatch four-part contract, the receipt three-part set
+│   ├── 5-workflow.md            ★★ how scenes chain into one line, thresholds, execution state
+│   ├── 6-two-memory-systems.md      ★ scene memory = ledger, semantic memory = wiki
+│   ├── 7-dispatch-and-recovery-interface.md  the contract between the repo and the engine
+│   ├── 8-cross-scene-dispatch.md     ★ scene-to-scene dispatch (mailbox and routing)
+│   └── README.md
+├── 01-architecture-overview/
+│   ├── 1-topology-overview.md           seven layers + who reads whom / who writes whom
+│   ├── 2-workflow-map.md                the workflow map: which workflows, which scenes
+│   ├── diagrams/topology-scene-memory-architecture.svg
+│   └── README.md
+├── 02-implementation/
+│   ├── 1-directory-and-file-spec.md      directory structure, file formats, naming conventions
+│   ├── 2-handover-and-validation.md          session switch protocol, fail-closed, fingerprint mechanism
+│   ├── 3-maintenance-manual.md          ★★ the standard procedure for changing the architecture (read this when you come back)
+│   ├── 4-known-gaps-and-todo.md      located but unfixed problems (with fixes)
+│   ├── 5-new-scene-spec.md    ★★ the standard scene 10+3 spec ＋ the ten steps (each with acceptance)
+│   ├── 6-archive-layer.md         ★★ where the full chat goes: three-layer split ＋ engine export contract
+│   ├── 7-session-switch.md         ★★ a session switch = one atomic operation with self-checks (four steps ＋ three syncs)
+│   ├── 8-content-to-shot-spec.md        the seam spec: from content to shots
+│   └── README.md
+├── 03-executable-tools/
+│   ├── workbench.mjs               ★ shared module (path resolution + YAML + subsection parsing)
+│   ├── scene-memory.mjs             the validation tool (executable)
+│   ├── add-scene.mjs             ★★ build a complete scene (skeleton + six-part set + index registration)
+│   ├── switch-session.mjs               ★★ pre-switch checks ＋ three-way sync self-check
+│   ├── session-archive.mjs             ★★ chat archive layer: extract ＋ index ＋ check
+│   ├── verify-receipt.mjs             ★ the receipt three-part set + accumulable artifact landing check
+│   ├── verify-workflow.mjs           ★ mechanical checks of a workflow definition
+│   ├── run-workflow.mjs           ★ offline executor (start/step/receipt/resume/status)
+│   ├── verify-dispatch.mjs             ★ dispatch contract verification
+│   ├── check-links.mjs                  link checking
+│   ├── gate-acceptance.sh                the acceptance gate
+│   ├── gate-acceptance-simulate-busy.mjs simulating a busy engine for the gate
+│   ├── remove-boundary-marker.mjs       removing boundary markers
+│   ├── handover-rules.json                the rules single source (shared with 04-templates)
+│   ├── negative-acceptance.sh              15 items: proof that it fails when it should
+│   ├── workflow-acceptance.sh            ★ 12 items: end-to-end run of the accumulation loop
+│   ├── README.md
+│   └── USAGE.md                 usage, exit codes, how to point it at your own directory
+├── 04-templates/                    pure shells you can copy directly
+│   ├── scene-private-memory.md
+│   ├── locator-card.md
+│   ├── identity-card.md
+│   ├── scene-portrait.md
+│   ├── handover-rules.json            ★ the single source of the rules (hard limits are defined only here)
+│   ├── dispatch-template.md              ★ the receipt three-part set format
+│   ├── scene-constitution-template.md          ★ the AGENTS.md template for a new scene
+│   ├── scene-skill-template.md          ★ the SKILL.md template for a new scene
+│   ├── scene-definition-template.json        ★ the panel json template for a new scene
+│   ├── workflow-template.md            ★ the workflow definition format
+│   ├── execution-state-template.md          ★ the private state of one execution
+│   ├── carry-template.md            ★ the carrier that passes an accumulable artifact down the chain
+│   ├── handover-rules-engine-example.json
+│   ├── README.md
+│   ├── demo-workbench/                 a runnable demo workbench
+│   └── demo-workbench.clean/           the same, with the boundary markers stripped
+├── 05-comparisons-and-selection/
+│   ├── 1-scene-vs-ephemeral-executor.md    ★★ scene vs sub-agent: when to use which
+│   ├── 2-comparison-with-a2a.md
+│   ├── 3-scene-memory-vs-semantic-memory.md
+│   ├── 4-selection-criteria.md
+│   └── README.md
 └── LICENSE                     MIT
 ```
 
 ---
 
-## 三個紅線
+## The three hard limits
 
-| 紅線 | 擋住什麼病 |
+| hard limit | what disease it blocks |
 |---|---|
-| **一次派單 ＝ 一條回執** | 活幹完了但對方還不知道 |
-| **沒有可累積物的回執 ＝ 這次活白做** | 活幹完了但認識沒累積 |
-| **⛔ 只許請求，不許改對方記憶** | 邊界糊掉，稽核失效 |
+| **one dispatch ＝ one receipt** | the job is done but the other party does not know |
+| **a receipt with no accumulable artifact ＝ this job was wasted** | the job is done but the learning did not accumulate |
+| **⛔ request only, never modify the other party's memory** | boundaries blur, audit fails |
 
-前兩條是同一族：**做了，但沒留下。**
+The first two are the same family: **done, but nothing left behind**.
 
 ---
 
-## 讀之前先認這些符號
+## Know these symbols before reading
 
-| 你看到的 | 意思 |
+| what you see | meaning |
 |---|---|
-| `<場景名>` `<工作台根>` `<面板id>` | 佔位符，不是待填的作業單 |
-| `§〇` | 交接段（每份場景私有記憶的第一段，**覆蓋寫**） |
-| `§五` | 決策與坑（**只追加**，可累積物的落點之一） |
-| **主控端** | 持有場景的那個 agent／工作台（引擎中立角色） |
-| **臨時執行體** | 一次性派工（sub-agent 這類），用完即棄 |
-| `⛔` | **不許做** —— 硬規則 |
-| `★` | 關鍵段落 |
-| `⚠` | 注意 / 已知陷阱 |
-| `✅` `❌` | 對照表兩側的結果 |
+| `<scene-name>` `<workbench-root>` `<panel-id>` | placeholders, not a to-do list |
+| `§0` | the handover section (the first section of every scene private memory, **overwritten in place**) |
+| `§5` | Decisions and Pitfalls (**append only**, one of the landing spots for accumulable artifacts) |
+| **orchestrator** | the agent / workbench that holds the scene (an engine-neutral role) |
+| **ephemeral executor** | a one-off work assignment (a sub-agent and the like), used and discarded |
+| `⛔` | **not allowed** — a hard rule |
+| `★` | a key passage |
+| `⚠` | caution / known pitfall |
+| `✅` `❌` | the two sides of a comparison table |
 
 ---
 
-## 五分鐘驗證這套方法真的成立
+## Five minutes to verify the method actually holds
 
 ```bash
-cd 03-可執行工具
+cd 03-executable-tools
 
-# 1) 看示範工作台長什麼樣
-node 場景記憶.mjs list --root ../04-模板/示範工作台
+# 1) see what the demo-workbench looks like
+node scene-memory.mjs list --root ../04-templates/demo-workbench
 
-# 2) ★ 跑自我驗收：故意把場景弄壞 10 次，確認每次都被擋下
-bash 反例驗收.sh
+# 2) ★ run the self-acceptance: deliberately break the scene 10 times, confirm every break is blocked
+bash negative-acceptance.sh
 
-# 3) ★★ 跑工作流端到端驗收：三個場景串成一條線，證明累積真的閉合
-bash 工作流驗收.sh
+# 3) ★★ run the workflow end-to-end acceptance: three scenes chained into one line, proving accumulation really closes
+bash workflow-acceptance.sh
 ```
 
-預期輸出：
+Expected output:
 
 ```
-【V1】§₀ 灌爆 4 KB 紅線（期望 exit=1）
-  ✓ §₀ 超紅線被擋
-【V3】改定位卡但沒重蓋身份卡 ⇒ 指紋過期（期望 exit=1）
-  ✓ 卡指紋過期被擋
+【V1】§0 blown past the 4 KB hard limit (expect exit=1)
+  ✓ §0 over the limit is blocked
+【V3】locator card changed but identity card not re-stamped ⇒ stale fingerprint (expect exit=1)
+  ✓ stale card fingerprint is blocked
 ...
-═══ 結果：15 通過，0 失敗 ═══
+═══ Result: 15 passed, 0 failed ═══
 
-【E3】回執缺「可累積物」⇒ 擋下且 run 就地停（期望 exit=1）
-  ✓ 缺可累積物的回執被擋下
-  ✓ run 就地停（fail-closed）
+【E3】receipt missing the "accumulable artifact" ⇒ blocked and the run stops in place (expect exit=1)
+  ✓ receipt with no accumulable artifact is blocked
+  ✓ the run stops in place (fail-closed)
 ...
-═══ 結果：12 通過，0 失敗 ═══
+═══ Result: 12 passed, 0 failed ═══
 ```
 
-**驗收標準很硬**：校驗工具必須能證明「**該失敗時會失敗**」。
-一個永遠回傳「✅ 通過」的檢查器，比沒有檢查器更危險——
-它讓人以為有防護，其實沒有。
+**The acceptance criteria are hard**: the validation tool must be able to prove "**it fails when it should fail**".
+A checker that always returns "✅ passed" is more dangerous than no checker at all —
+it makes people believe they are protected when they are not.
 
-> 第二支（工作流驗收）證明的是**另一件事**：
-> **累積迴圈真的閉合**——可累積物跨場景傳到了下一跳的派單裡，
-> 而且缺它、沒落地、門檻該停，三種情況都被擋下。
+> The second script (workflow acceptance) proves **a different thing**:
+> **the accumulation loop really closes** — the accumulable artifact crosses scenes into the next hop's dispatch,
+> and all three cases (missing, not landed, threshold reached) are blocked.
 
 ---
 
-## 出處與致謝
+## Sources and acknowledgements
 
-- 本架構的**底層引擎機制**（用 `.git` 劃定專案根、只載入該樹的憲法與專屬技能）
-  來自 [DSH](https://github.com/DeepSeek-AI) 引擎本體，不是這裡發明的。
-- 整體工作台形態與「多場景分場治理」的方法論框架，
-  大量借鑑了 [**淋雨家的工作台**](https://github.com/linyujia/luanyujia-workbench)（MIT）——
-  這是一份公開的方法論倉庫，本架構站在它的肩膀上，並針對「場景記憶」這條線做深。
-- 文中所有數字（交接段位元組數、檔案大小紅線、指紋長度、耗時）皆為**本機實測值**，
-  已在各篇標明出處與量測時間。
+- The **underlying engine mechanism** of this architecture (using `.git` to define the project root, loading only that tree's constitution and dedicated skills)
+  comes from the [DSH](https://github.com/DeepSeek-AI) engine itself; it is not invented here.
+- The overall workbench form and the "multi-scene, split-by-scene governance" methodology framework
+  draw heavily on [**linyujia's workbench**](https://github.com/linyujia/luanyujia-workbench) (MIT) —
+  a public methodology repository. This architecture stands on its shoulders and goes deeper along the "scene memory" line.
+- All numbers in the text (handover section byte counts, file size hard limits, fingerprint length, elapsed time) are **locally measured values**,
+  with their source and measurement time stated in each doc.
 
 ---
 
-## 授權
+## License
 
-MIT —— 見 [`LICENSE`](LICENSE)。
+MIT — see [`LICENSE`](LICENSE).
 
-方法論與文件版權所有；你拿去改、拿去用、拿去 fork 都可以。
+The methodology and docs are copyrighted; take it, change it, use it, fork it.

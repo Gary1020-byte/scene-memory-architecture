@@ -1,0 +1,4 @@
+This directory is deliberately left empty.
+
+git does not track empty directories, so a .gitkeep is needed to make it
+survive a clone.

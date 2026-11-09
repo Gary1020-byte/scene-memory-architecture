@@ -1,0 +1,21 @@
+This is the demo marker for a "scene boundary".
+
+In real use, this is a **real git repository** (a directory named .git,
+containing structures such as HEAD, objects and refs). The engine determines the
+scene boundary by "walking up from cwd to find the nearest .git" — the layer it
+finds is the project root, and only that tree's constitution and exclusive
+skill are loaded.
+
+The demo deliberately does not ship a real git repository, because of two hard
+limits of a public repository:
+  1. **A nested git repository with no commit makes the outer `git add -A` fail outright**
+     (git treats it as a submodule: "does not have a commit checked out").
+  2. **git itself does not track a file named `.git`** — even if it were a file, it could not enter the version control system.
+
+So the demo uses this `.git-marker` explanation file instead. The validation tool
+accepts either `.git` or `.git-marker` (see the "boundary marker filename" rule
+in `03-executable-tools/handover-rules.json`).
+
+⚠️ **When you create your own scene, always use `git init` to make a real .git directory**;
+do not reuse this .git-marker — the engine recognises "the nearest .git
+directory", not an explanation file.

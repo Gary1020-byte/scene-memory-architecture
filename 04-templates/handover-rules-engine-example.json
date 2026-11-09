@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "description": "★ Example engine-side rules file (simplified-Chinese workbench). Put a copy like this next to the engine-side tool directory (or point to it with --rules) and the tools will use your own naming and terminology. The repo default is English; this file exists to prove the naming is fully overridable.",
+  "sceneRootDir": "场景",
+  "memoryFile": "场景私有记忆.md",
+  "identityFile": "identity-card.md",
+  "portraitFile": "场景画像.md",
+  "indexFile": "_场景身份索引.md",
+  "projectDir": "项目记忆",
+  "archiveDir": "归档",
+  "skillDir": ".dsh/skills",
+  "constitutionFile": "AGENTS.md",
+  "sceneConfigFile": "场景配置.json",
+  "dispatchField_what": "做什么",
+  "dispatchField_criteria": "判据",
+  "dispatchField_output": "落盘位置",
+  "dispatchField_receipt": "回执方式",
+  "dispatchField_needs": "需要",
+  "receiptRequiredSections": [
+    "差异集合",
+    "可累积物",
+    "下一棒"
+  ],
+  "artifactSection": "可累积物",
+  "diffSetSection": "差异集合",
+  "nextHopSection": "下一棒",
+  "accumulationTargetSection": "§五",
+  "fileIndexFile": "_文件索引.md",
+  "memoryRootCandidates": [
+    "<根>/场景",
+    "<根>/引擎数据/.dsh/场景记忆"
+  ]
+}
