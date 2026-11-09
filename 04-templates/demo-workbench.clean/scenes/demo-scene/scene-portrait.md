@@ -1,21 +1,21 @@
-# demo-scene · 場景畫像（工具生成 · 由場景 json 推導）
+# demo-scene · Scene Portrait (tool-generated · derived from the scene json)
 
-> 來源：場景 json + 定位卡 ｜ 生成 2026-11-09 19:32
-> 一句話：（從場景 json 的 description 推導；本通用模板不綁定特定引擎）
+> Source: scene json + locator card ｜ generated 2026-11-09 19:59
+> In one line: (derived from the scene json description; this generic template is not bound to any particular engine)
 
-## 一、形態
-- 面板數：見場景 json
+## 1. Shape
+- Panel count: see the scene json
 
-## 二、專屬技能
+## 2. Dedicated Skill
 - demo
 
-## 三、記憶
-- 記憶資料夾：`demo-scene/`
+## 3. Memory
+- Memory folder: `demo-scene/`
 - Handover section: the §0 of `scene-private-memory.md` (≤ 4 KB)
-- 專案記憶：`project-memory/`（≤ 8 KB／份）
+- Project memory: `project-memory/` (≤ 8 KB per file)
 
-## 四、依賴與入口
-- 定位卡：`scenes/demo-scene/locator-card.md`
-- 綁定會話：session-demo0001
+## 4. Dependencies and entry points
+- Locator card: `scenes/demo-scene/locator-card.md`
+- Bound session: session-demo0001
 
-> 本檔案由工具推導生成；場景 json 改了就 `stamp`。
+> This file is derived by the tool; if the scene json changes, run `stamp`.
