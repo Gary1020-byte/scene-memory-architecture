@@ -102,7 +102,12 @@ export function sectionBlock (text, key) {
   }
   if (start < 0) return ''
   const out = []
+  // ★ 略過 ``` 圍欄的程式碼區塊：裡面的 # 標題是範例文字，不是真的小節標題，
+  //   否則會把 §五 提前截斷，害後半段的可累積物看不到（誤判「沒落地」）。
+  let inFence = false
   for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) { inFence = !inFence; out.push(lines[i]); continue }
+    if (inFence) { out.push(lines[i]); continue }
     const m = /^\s*(#{1,6})\s+/.exec(lines[i])
     if (m && m[1].length <= level) break
     out.push(lines[i])
