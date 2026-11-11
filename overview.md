@@ -120,7 +120,10 @@ workflow (shared layer, plan) → start → each hop opens a new conversation an
 
 ## The numbers (a reference scale from local measurement, not a standard)
 
-**3 scenes** (scene A / scene D / scene C) · one private memory per scene · 4 KB handover hard limit · 25 KB main file hard limit.
+> ⚠️ **The scene count above is out of date** (written when there were 3; there are 24 now, and "Command" was renamed "Master").
+> The measured reality is in [`06-actual-operation/`](06-actual-operation/).
+
+**One private memory per scene** · 4 KB handover hard limit · 25 KB main file hard limit.
 **All scale numbers change with the version, they are not hardcoded.** You may have 2 scenes and 5 projects — **the structure and the rules do not change, the scale is free**.
 
 > The hard limit numbers themselves are the point: **they must be an explicit threshold, not "roughly don't write too much".**
@@ -135,6 +138,7 @@ workflow (shared layer, plan) → start → each hop opens a new conversation an
 | how to choose between scene and sub-agent | [`05-comparisons-and-selection/1-scene-vs-ephemeral-executor.md`](05-comparisons-and-selection/1-scene-vs-ephemeral-executor.md) ★ |
 | how a workflow runs | [`00-core-mechanisms/5-workflow.md`](00-core-mechanisms/5-workflow.md) ★ |
 | how the mechanisms are designed | [`00-core-mechanisms/`](00-core-mechanisms/) |
+| **what the machine actually does today** | [`06-actual-operation/`](06-actual-operation/) ★ |
 | the whole structure in one diagram | [`01-architecture-overview/`](01-architecture-overview/) |
 | build your own | [`02-implementation/`](02-implementation/) ＋ [`04-templates/`](04-templates/) |
 | to keep history (where the full chat goes) | [`02-implementation/6-archive-layer.md`](02-implementation/6-archive-layer.md) ★ |

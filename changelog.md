@@ -768,6 +768,45 @@ Also decided: the **engine-neutral edition** stays in this repo, and the Hermes-
   so V3／V11／V7 could not reach the real logic (they were blocked earlier by "missing file") and were misjudged as failures.
   **Lesson: an acceptance script's fixture must first be brought to "all green", otherwise you are testing something else.**
 
+
+### v1.7 · 2026-11-11 · New section 06: what the machine actually does today
+
+**What changed**
+
+- **New `06-actual-operation/`** — README ＋ `1-as-actually-run.md` (the measured reality) ＋ `2-quick-reference.md` (gap table + numbers)
+  - The system map as it actually runs: **Hermes is the entry point**, DSH is the side that gets dispatched to
+  - The shared layer split into three fates: alive (routing table ＋ dispatch channel) / half-alive (93 KB of notices no agent reads) / dead (todo 24 B, conflict log 47 B)
+  - Measured: **1298 routing attempts, 94.1% hit rate, 77 misses feeding the next improvement**
+  - **53 dispatches across 13 receiving scenes**; the four-part contract shown on a real one
+  - **Workflows as a third layer** (3 YAML files, 2 real runs) and how a scene / a workflow / a dispatch differ
+  - **Four memory systems, not two** — and the note that Hindsight has a single bank with no `bank_ids`, so scene-level semantic memory is actually shared
+  - The **14-item gap table** between the spec and the machine
+- `overview.md`: the "3 scenes" line now carries an out-of-date warning and points to the new section
+- `README.md`: section navigation ＋ directory tree updated
+
+**Why**
+
+The spec was written when there were three scenes. The machine now has 24, the entry point is Hermes rather than the scene, the shared layer is a routing table plus a dispatch channel rather than "shared memory", there are four memory systems instead of two, and workflows exist as a third layer.
+
+None of the spec's *rules* are wrong. The problem is that they no longer describe the machine — and an expired spec is worse than no spec, because it sends you looking for a 47-byte empty conflict log that was never built.
+
+The worst instance is not in this repo: **`~/.dsh/AGENTS.md` is injected into every turn of every scene, and it still says "four scenes".** That is not a stale file — it is stale words in every agent's context.
+
+**How it was verified**
+
+- `ls -d ~/.DSH/工作台/場景/*/ | grep -v '/_' | wc -l` → **24**
+- `路由回饋.jsonl` → 1298 attempts / 1221 hits → **94.1%**
+- `find 派單/ -name '派單-*.md' ! -name '*.回執.md'` → **53**, across 13 receiving scenes
+- `grep -rl '共享記憶|sharedMemory' @deepseek-ai/dsh/ --include='*.js'` → only a web-frontend locale file; **zero in the engine**
+- Shared-layer dead files measured: `_待辦.md` 24 B, `衝突.md` 47 B, `项目.json` 20 B — `grep` across every tool finds no reference
+- Every number in the new doc was re-derived by running the command; the dispatch count was first miscounted with `ls` (it included receipts and state files) and recomputed with `find`
+- Hindsight `RecallRequest` has no `bank_ids` field ⇒ one bank means scene-level semantic memory is shared, not isolated
+
+**Pitfalls hit**
+
+- The Chinese clone and the English clone point at the **same GitHub repo with divergent content** — the Chinese `master` (`af49fdf`) and the English `origin/master` (`4d13830`) have forked, and the Chinese version is no longer on GitHub at all. The Chinese side was therefore committed **locally only, never pushed**, because pushing it would overwrite the published English version.
+- The Chinese repo's new section was first numbered `05-`, which collided with the existing `05-對照與選型`; renamed to `06-` (commit `c61bc14`).
+
 ---
 
 ## The rules of this list

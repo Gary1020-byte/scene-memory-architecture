@@ -80,6 +80,7 @@ is never stored in any AI's head, but written to disk as a **4 KB handover file*
 | **03** | **Executable tools** | scene memory validation tool: init／stamp／handover／check／list, fails with explicit errors | [`03-executable-tools/`](03-executable-tools/) |
 | **04** | **Templates** | directly copyable: scene private memory, locator card, identity card, scene portrait, handover rules, dispatch format, **workflow definition** | [`04-templates/`](04-templates/) |
 | **05** | **Comparisons and selection** | **scene vs ephemeral executor**, the difference from the A2A protocol, scene memory vs semantic memory, when to pick which | [`05-comparisons-and-selection/`](05-comparisons-and-selection/) |
+| **06** | **As actually run** | **what the machine actually does today**, not what the spec describes: 24 scenes vs the 3 in the spec, the shared layer reduced to a routing table + dispatch channel, **Hermes as the entry point** (undocumented in the spec), four memory systems instead of two, workflows as a third layer, and the full 14-item gap table | [`06-actual-operation/`](06-actual-operation/) ★ |
 
 Three more must-reads:
 
@@ -165,6 +166,11 @@ scene-memory-architecture/
 │   ├── 2-comparison-with-a2a.md
 │   ├── 3-scene-memory-vs-semantic-memory.md
 │   ├── 4-selection-criteria.md
+│   └── README.md
+├── 06-actual-operation/            what the machine actually does today
+│   ├── 1-as-actually-run.md      ★★ the measured reality: the system map, the shared layer's three fates,
+│   │                              the 94.1% routing hit rate, workflows, four memory systems, the 14-item gap table
+│   ├── 2-quick-reference.md      ★ just the gap table and the numbers
 │   └── README.md
 └── LICENSE                     MIT
 ```
